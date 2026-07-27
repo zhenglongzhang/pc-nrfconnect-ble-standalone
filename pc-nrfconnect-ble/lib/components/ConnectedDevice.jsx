@@ -34,6 +34,7 @@ const ConnectedDevice = ({
     onPhyUpdate,
     onMtuUpdate,
     onDataLengthUpdate,
+    onBeaconConfig,
 }) => {
     const node = useRef(null);
     const [boundingRect, setBoundingRect] = useState(null);
@@ -100,6 +101,9 @@ const ConnectedDevice = ({
                 break;
             case 'Pair':
                 onPair();
+                break;
+            case 'BeaconConfig':
+                onBeaconConfig();
                 break;
             default:
                 console.log('Unknown eventKey received:', eventKey);
@@ -188,6 +192,12 @@ const ConnectedDevice = ({
                                 >
                                     Pair...
                                 </Dropdown.Item>
+                                <Dropdown.Item
+                                    id="beaconConfigMenuItem"
+                                    eventKey="BeaconConfig"
+                                >
+                                    Beacon configuration...
+                                </Dropdown.Item>
                                 <Dropdown.Divider key="dividerDisconnect" />
                                 <Dropdown.Item
                                     id="disconnectMenuItem"
@@ -239,6 +249,11 @@ ConnectedDevice.propTypes = {
     onPhyUpdate: PropTypes.func.isRequired,
     onMtuUpdate: PropTypes.func.isRequired,
     onDataLengthUpdate: PropTypes.func.isRequired,
+    onBeaconConfig: PropTypes.func,
+};
+
+ConnectedDevice.defaultProps = {
+    onBeaconConfig: () => {},
 };
 
 export default ConnectedDevice;

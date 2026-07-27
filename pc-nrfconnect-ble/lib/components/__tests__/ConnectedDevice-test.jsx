@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import Dropdown from 'react-bootstrap/Dropdown';
 import { mount } from 'enzyme';
 
 import { getImmutableDevice } from '../../utils/api';
@@ -39,12 +40,24 @@ function mountComponent(props) {
             onPhyUpdate={() => {}}
             onMtuUpdate={() => {}}
             onDataLengthUpdate={() => {}}
+            onBeaconConfig={() => {}}
             {...props}
         />
     );
 }
 
 describe('ConnectedDevice', () => {
+    describe('when Beacon configuration is selected', () => {
+        const onBeaconConfig = jest.fn();
+        const wrapper = mountComponent({ onBeaconConfig });
+
+        wrapper.find(Dropdown).prop('onSelect')('BeaconConfig');
+
+        it('should open the configuration for the connected device', () => {
+            expect(onBeaconConfig).toHaveBeenCalled();
+        });
+    });
+
     describe('when DFU button is clicked', () => {
         const onClickDfu = jest.fn();
         const device = getImmutableDevice({});

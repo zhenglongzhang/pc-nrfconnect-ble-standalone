@@ -19,8 +19,8 @@ import { isSupportedJLinkDevice } from '../utils/devices';
 import { hexStringToArray, toHexString } from '../utils/stringUtil';
 import { BLEEventState, BLEPHYType } from './common';
 import { discoverServices } from './deviceDetailsActions';
-import { showErrorDialog } from './errorDialogActions';
 import { scanStopped } from './discoveryActions';
+import { showErrorDialog } from './errorDialogActions';
 
 export const ADAPTER_OPEN = 'ADAPTER_OPEN';
 export const ADAPTER_OPENED = 'ADAPTER_OPENED';

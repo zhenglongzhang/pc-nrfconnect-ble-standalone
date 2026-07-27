@@ -45,15 +45,17 @@ function scanStopped(state) {
     logger.info('Scan stopped');
     const { devices, options } = state;
     let foundDevice = null;
-    
+
     if (options.rawDatafilterString) {
-        foundDevice = devices.find(device => 
-            device.services.size > 0 && device.services.some(service => 
-                service.includes(options.rawDatafilterString)
-            )
+        foundDevice = devices.find(
+            device =>
+                device.services.size > 0 &&
+                device.services.some(service =>
+                    service.includes(options.rawDatafilterString)
+                )
         );
     }
-    
+
     // 如果没找到满足条件的设备或没有过滤条件，就取第一个设备
     if (!foundDevice && devices.size > 0) {
         foundDevice = devices.first();
@@ -61,9 +63,12 @@ function scanStopped(state) {
 
     if (foundDevice) {
         appendToCsv({
-            avg: (foundDevice.allRssi.reduce((a, b) => a + b, 0) / foundDevice.allRssi.size).toFixed(2) + ' dBm',
-            max: foundDevice.allRssi.max() + ' dBm',
-            min: foundDevice.allRssi.min() + ' dBm',
+            avg: `${(
+                foundDevice.allRssi.reduce((a, b) => a + b, 0) /
+                foundDevice.allRssi.size
+            ).toFixed(2)} dBm`,
+            max: `${foundDevice.allRssi.max()} dBm`,
+            min: `${foundDevice.allRssi.min()} dBm`,
             mac: foundDevice.address,
         });
     }
@@ -106,9 +111,15 @@ function deviceDiscovered(oldState, device) {
         const adData = existingDevice.adData.merge(newDevice.adData);
         newDevice = newDevice.mergeIn(['adData'], adData);
 
-        newDevice = newDevice.setIn(['allRssi'], existingDevice.allRssi.concat(newDevice.rssi));
+        newDevice = newDevice.setIn(
+            ['allRssi'],
+            existingDevice.allRssi.concat(newDevice.rssi)
+        );
     } else {
-        newDevice = newDevice.setIn(['allRssi'], newDevice.allRssi.concat(newDevice.rssi));
+        newDevice = newDevice.setIn(
+            ['allRssi'],
+            newDevice.allRssi.concat(newDevice.rssi)
+        );
     }
 
     logger.debug(`address: ${device.address}, allRssi: ${newDevice.allRssi}`);

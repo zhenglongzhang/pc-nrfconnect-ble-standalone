@@ -11,6 +11,7 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import { connect } from 'react-redux';
 import { OrderedMap } from 'immutable';
+import { logger } from 'pc-nrfconnect-shared';
 import PropTypes from 'prop-types';
 import { bindActionCreators } from 'redux';
 
@@ -21,9 +22,8 @@ import DiscoveryButton from '../components/DiscoveryButton';
 import TextInput from '../components/input/TextInput';
 import Spinner from '../components/Spinner';
 import { DiscoveryOptions } from '../reducers/discoveryReducer';
-import withHotkey from '../utils/withHotkey';
-import { logger } from 'pc-nrfconnect-shared';
 import { toHexString } from '../utils/stringUtil';
+import withHotkey from '../utils/withHotkey';
 
 const matchesFilter = filterRegexp => device => {
     if (device.name.search(filterRegexp) >= 0) return true;
@@ -40,7 +40,8 @@ class DiscoveredDevices extends React.PureComponent {
         window.addEventListener('core:clear-scan', clearDevicesList);
 
         this.handleNameFilterChange = this.handleNameFilterChange.bind(this);
-        this.handleRawDataFilterChange = this.handleRawDataFilterChange.bind(this);
+        this.handleRawDataFilterChange =
+            this.handleRawDataFilterChange.bind(this);
         this.handleSortByRssiCheckedChange = this.handleCheckedChange.bind(
             this,
             'sortByRssi'
@@ -176,13 +177,19 @@ class DiscoveredDevices extends React.PureComponent {
             );
         }
 
-        if(rawDatafilterString){
+        if (rawDatafilterString) {
             discoveredDeviceList = discoveredDeviceList.filter(device => {
                 // if(device.adData.get("BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA")
                 //  && toHexString(device.adData.get("BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA")).replaceAll("-","").includes(rawDatafilterString)
                 // )
                 // return true
-                if(device.services.size > 0 &&  device.services.some(service => service.includes(rawDatafilterString))) return true
+                if (
+                    device.services.size > 0 &&
+                    device.services.some(service =>
+                        service.includes(rawDatafilterString)
+                    )
+                )
+                    return true;
                 return false;
             });
         }

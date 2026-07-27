@@ -254,7 +254,10 @@ class DiscoveredDevice extends React.PureComponent {
                 </div>
                 <div className="top-bar">
                     <div>
-                        <span className="address-text">{`平均: ${(device.allRssi.reduce((a, b) => a + b, 0) / device.allRssi.size).toFixed(2)} dBm`}</span>
+                        <span className="address-text">{`平均: ${(
+                            device.allRssi.reduce((a, b) => a + b, 0) /
+                            device.allRssi.size
+                        ).toFixed(2)} dBm`}</span>
                     </div>
                     <div>
                         <span className="address-text">{`最大: ${device.allRssi.max()} dBm`}</span>

@@ -23,6 +23,7 @@ import {
     findSelectedItem,
     traverseItems,
 } from '../common/treeViewKeyNavigation';
+import BeaconConfigDialog from '../components/BeaconConfigDialog';
 import DeviceDetailsView from '../components/DeviceDetails';
 import { getInstanceIds } from '../utils/api';
 import withHotkey from '../utils/withHotkey';
@@ -31,10 +32,14 @@ import DfuDialog from './DfuDialog';
 class DeviceDetailsContainer extends React.PureComponent {
     constructor(props) {
         super(props);
+        this.state = { beaconDevice: null };
         this.moveUp = () => this.selectNextComponent(true);
         this.moveDown = () => this.selectNextComponent(false);
         this.moveRight = () => this.expandComponent(true);
         this.moveLeft = () => this.expandComponent(false);
+        this.showBeaconConfig = device =>
+            this.setState({ beaconDevice: device });
+        this.hideBeaconConfig = () => this.setState({ beaconDevice: null });
     }
 
     componentDidMount() {
@@ -142,7 +147,9 @@ class DeviceDetailsContainer extends React.PureComponent {
             security,
             openCustomUuidFile,
             showDfuDialog,
+            prepareIbeaconConfiguration,
         } = this.props;
+        const { beaconDevice } = this.state;
 
         const elemWidth = 250;
         const detailDevices = [];
@@ -205,6 +212,7 @@ class DeviceDetailsContainer extends React.PureComponent {
                     onUpdateDeviceDataLength={
                         createUserInitiatedDataLengthUpdateEvent
                     }
+                    onBeaconConfig={() => this.showBeaconConfig(device)}
                 />
             );
         });
@@ -229,6 +237,15 @@ class DeviceDetailsContainer extends React.PureComponent {
                     </div>
                 </div>
                 <DfuDialog />
+                {beaconDevice && (
+                    <BeaconConfigDialog
+                        device={beaconDevice}
+                        deviceDetails={deviceDetails}
+                        onHide={this.hideBeaconConfig}
+                        onPrepare={prepareIbeaconConfiguration}
+                        onWriteCharacteristic={writeCharacteristic}
+                    />
+                )}
             </>
         );
     }
@@ -303,6 +320,7 @@ DeviceDetailsContainer.propTypes = {
     toggleAutoConnUpdate: PropTypes.func.isRequired,
     autoConnUpdate: PropTypes.bool,
     showDfuDialog: PropTypes.func.isRequired,
+    prepareIbeaconConfiguration: PropTypes.func.isRequired,
     bindHotkey: PropTypes.func.isRequired,
 };
 

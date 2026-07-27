@@ -48,6 +48,7 @@ const DeviceDetailsView = ({
     onOpenCustomUuidFile,
     onSetSecurityParams,
     onShowDfuDialog,
+    onBeaconConfig,
     style,
 }) => {
     const renderChildren = id => {
@@ -159,6 +160,7 @@ const DeviceDetailsView = ({
                 onPhyUpdate={() => onUpdateDevicePhy(device)}
                 onMtuUpdate={() => onUpdateDeviceMtu(device)}
                 onDataLengthUpdate={() => onUpdateDeviceDataLength(device)}
+                onBeaconConfig={onBeaconConfig}
             />
             {renderChildren(instanceId)}
         </div>
@@ -196,6 +198,7 @@ DeviceDetailsView.propTypes = {
     onOpenCustomUuidFile: PropTypes.func,
     onSetSecurityParams: PropTypes.func,
     onShowDfuDialog: PropTypes.func,
+    onBeaconConfig: PropTypes.func,
     style: PropTypes.object,
 };
 
@@ -223,6 +226,7 @@ DeviceDetailsView.defaultProps = {
     onOpenCustomUuidFile: null,
     onSetSecurityParams: null,
     onShowDfuDialog: null,
+    onBeaconConfig: null,
     style: null,
 };
 

@@ -1,6 +1,6 @@
 {
     "name": "nrfconnect-bluetooth-low-energy",
-    "version": "4.0.5",
+    "version": "4.0.6",
     "description": "nRF Connect for Desktop",
     "repository": {
         "type": "git",

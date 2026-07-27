@@ -13,6 +13,7 @@ import { logger } from 'pc-nrfconnect-shared';
 import { getInstanceIds } from '../utils/api';
 import { DEVICE_NAME_UUID, GENERIC_ACCESS_UUID } from '../utils/definitions';
 import openFileInDefaultApplication from '../utils/fileUtil';
+import { findIbeaconConfigurationAttributes } from '../utils/ibeaconProtocol';
 import { getUuidDefinitionsFilePath } from '../utils/uuid_definitions';
 import { showErrorDialog } from './errorDialogActions';
 
@@ -391,6 +392,134 @@ export function writeCharacteristic(characteristic, value) {
         }).catch(error => {
             dispatch(showErrorDialog(error));
         });
+}
+
+function getServices(adapter, device) {
+    return new Promise((resolve, reject) => {
+        adapter.getServices(device.instanceId, (error, services) => {
+            if (error) {
+                reject(new Error(error.message));
+                return;
+            }
+            resolve(services);
+        });
+    });
+}
+
+function getCharacteristics(adapter, service) {
+    return new Promise((resolve, reject) => {
+        adapter.getCharacteristics(
+            service.instanceId,
+            (error, characteristics) => {
+                if (error) {
+                    reject(new Error(error.message));
+                    return;
+                }
+                resolve(characteristics);
+            }
+        );
+    });
+}
+
+function getDescriptors(adapter, characteristic) {
+    return new Promise((resolve, reject) => {
+        adapter.getDescriptors(
+            characteristic.instanceId,
+            (error, descriptors) => {
+                if (error) {
+                    reject(new Error(error.message));
+                    return;
+                }
+                resolve(descriptors);
+            }
+        );
+    });
+}
+
+function enableNotifications(adapter, descriptor) {
+    return new Promise((resolve, reject) => {
+        adapter.writeDescriptorValue(
+            descriptor.instanceId,
+            [1, 0],
+            true,
+            error => {
+                if (error) {
+                    reject(new Error(error.message));
+                    return;
+                }
+                resolve();
+            }
+        );
+    });
+}
+
+// Fully discover the selected peripheral before choosing the same GATT endpoints
+// used by znzl_beacn: first write-with-response and first notifying characteristic.
+export function prepareIbeaconConfiguration(device) {
+    return async (dispatch, getState) => {
+        const adapterToUse = getState().app.adapter.bleDriver.adapter;
+        if (adapterToUse === null) {
+            throw new Error('No adapter selected');
+        }
+
+        try {
+            dispatch(discoveringAttributesAction(device));
+            const services = await getServices(adapterToUse, device);
+            dispatch(discoveredAttributesAction(device, services));
+
+            const characteristics = [];
+            for (
+                let serviceIndex = 0;
+                serviceIndex < services.length;
+                serviceIndex += 1
+            ) {
+                const service = services[serviceIndex];
+                dispatch(discoveringAttributesAction(service));
+                // Services are enumerated in GATT order to match znzl_beacn.
+                // eslint-disable-next-line no-await-in-loop
+                const serviceCharacteristics = await getCharacteristics(
+                    adapterToUse,
+                    service
+                );
+                dispatch(
+                    discoveredAttributesAction(service, serviceCharacteristics)
+                );
+
+                for (
+                    let characteristicIndex = 0;
+                    characteristicIndex < serviceCharacteristics.length;
+                    characteristicIndex += 1
+                ) {
+                    const characteristic =
+                        serviceCharacteristics[characteristicIndex];
+                    dispatch(discoveringAttributesAction(characteristic));
+                    // eslint-disable-next-line no-await-in-loop
+                    const descriptors = await getDescriptors(
+                        adapterToUse,
+                        characteristic
+                    );
+                    dispatch(
+                        discoveredAttributesAction(characteristic, descriptors)
+                    );
+                    characteristics.push({ ...characteristic, descriptors });
+                }
+            }
+
+            const configuration =
+                findIbeaconConfigurationAttributes(characteristics);
+            await enableNotifications(adapterToUse, configuration.responseCccd);
+            dispatch(
+                completedWritingAttributeAction(
+                    configuration.responseCccd,
+                    [1, 0]
+                )
+            );
+            return configuration;
+        } catch (error) {
+            dispatch(showErrorDialog(error));
+            throw error;
+        }
+    };
 }
 
 export function readDescriptor(descriptor) {
