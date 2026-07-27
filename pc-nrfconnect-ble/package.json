@@ -14,7 +14,7 @@
     "nrfconnect": "^3.8.0"
   },
   "scripts": {
-    "build": "nrfconnect-scripts build-prod",
+    "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider nrfconnect-scripts build-prod",
     "clean-dist": "rimraf dist",
     "clean-modules": "rimraf \"node_modules/!(rimraf|.bin)\"",
     "clean": "npm run clean-dist && npm run clean-modules",

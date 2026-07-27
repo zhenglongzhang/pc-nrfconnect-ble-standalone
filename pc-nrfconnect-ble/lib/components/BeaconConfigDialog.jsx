@@ -30,6 +30,7 @@ const INTERVAL_OPTIONS = [
     100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1500, 2000, 2500, 3000,
     5000, 10000,
 ];
+export const DEFAULT_IBEACON_PASSWORD = '123456';
 
 function getCharacteristicValue(deviceDetails, instanceId) {
     if (!deviceDetails || !instanceId) {
@@ -46,7 +47,7 @@ function getCharacteristicValue(deviceDetails, instanceId) {
         : null;
 }
 
-class BeaconConfigDialog extends React.PureComponent {
+export class BeaconConfigDialog extends React.PureComponent {
     constructor(props) {
         super(props);
         this.state = this.initialState();
@@ -94,6 +95,7 @@ class BeaconConfigDialog extends React.PureComponent {
             pendingCommand: null,
             responseInstanceId: null,
             verified: false,
+            passwordRequired: false,
             status: 'Preparing iBeacon configuration…',
             statusType: 'info',
             values: {
@@ -120,13 +122,24 @@ class BeaconConfigDialog extends React.PureComponent {
         const { device, onPrepare } = this.props;
         try {
             const configuration = await onPrepare(device);
-            this.setState({
-                configuration,
-                responseInstanceId:
-                    configuration.responseCharacteristic.instanceId,
-                status: 'Ready. Verify the password to unlock configuration.',
-                statusType: 'info',
-            });
+            this.setState(
+                {
+                    configuration,
+                    responseInstanceId:
+                        configuration.responseCharacteristic.instanceId,
+                    values: {
+                        ...this.state.values,
+                        password: DEFAULT_IBEACON_PASSWORD,
+                    },
+                    status: 'Notifications enabled. Verifying the default password…',
+                    statusType: 'info',
+                },
+                () =>
+                    this.send(
+                        IBEACON_COMMAND.PASSWORD_CHECK,
+                        DEFAULT_IBEACON_PASSWORD
+                    )
+            );
         } catch (error) {
             this.setState({ status: error.message, statusType: 'danger' });
         }
@@ -160,7 +173,11 @@ class BeaconConfigDialog extends React.PureComponent {
         this.timeout = setTimeout(() => {
             this.setState({
                 pendingCommand: null,
-                status: 'The device did not respond within 5 seconds.',
+                passwordRequired: command === IBEACON_COMMAND.PASSWORD_CHECK,
+                status:
+                    command === IBEACON_COMMAND.PASSWORD_CHECK
+                        ? 'Default password verification timed out. Enter the device password and try again.'
+                        : 'The device did not respond within 5 seconds.',
                 statusType: 'danger',
             });
         }, 5000);
@@ -184,7 +201,16 @@ class BeaconConfigDialog extends React.PureComponent {
         if (!response.success) {
             this.setState({
                 pendingCommand: null,
-                status: 'The device rejected the command.',
+                passwordRequired:
+                    response.command === IBEACON_COMMAND.PASSWORD_CHECK,
+                values:
+                    response.command === IBEACON_COMMAND.PASSWORD_CHECK
+                        ? { ...values, password: '' }
+                        : values,
+                status:
+                    response.command === IBEACON_COMMAND.PASSWORD_CHECK
+                        ? 'Default password was rejected. Enter the device password and try again.'
+                        : 'The device rejected the command.',
                 statusType: 'danger',
             });
             return;
@@ -214,6 +240,7 @@ class BeaconConfigDialog extends React.PureComponent {
             verified:
                 this.state.verified ||
                 response.command === IBEACON_COMMAND.PASSWORD_CHECK,
+            passwordRequired: false,
             values: nextValues,
             status: 'Configuration updated successfully.',
             statusType: 'success',
@@ -288,13 +315,14 @@ class BeaconConfigDialog extends React.PureComponent {
                     <div className={`alert alert-${statusType}`} role="alert">
                         {status}
                     </div>
-                    {this.renderField(
-                        'Password',
-                        'password',
-                        IBEACON_COMMAND.PASSWORD_CHECK,
-                        false,
-                        'password'
-                    )}
+                    {this.state.passwordRequired &&
+                        this.renderField(
+                            'Password',
+                            'password',
+                            IBEACON_COMMAND.PASSWORD_CHECK,
+                            false,
+                            'password'
+                        )}
                     {this.renderField(
                         'New password',
                         'newPassword',

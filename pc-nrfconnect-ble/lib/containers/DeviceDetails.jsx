@@ -23,9 +23,10 @@ import {
     findSelectedItem,
     traverseItems,
 } from '../common/treeViewKeyNavigation';
-import BeaconConfigDialog from '../components/BeaconConfigDialog';
+import BeaconConfigDialogModal from '../components/BeaconConfigDialog';
 import DeviceDetailsView from '../components/DeviceDetails';
 import { getInstanceIds } from '../utils/api';
+import { findNewConnectedDevice } from '../utils/beaconConnection';
 import withHotkey from '../utils/withHotkey';
 import DfuDialog from './DfuDialog';
 
@@ -48,6 +49,19 @@ class DeviceDetailsContainer extends React.PureComponent {
         bindHotkey('down', this.moveDown);
         bindHotkey('left', this.moveLeft);
         bindHotkey('right', this.moveRight);
+    }
+
+    componentDidUpdate(prevProps) {
+        const { connectedDevices } = this.props;
+        const { beaconDevice } = this.state;
+        const newlyConnectedDevice = findNewConnectedDevice(
+            prevProps.connectedDevices,
+            connectedDevices
+        );
+
+        if (newlyConnectedDevice && !beaconDevice) {
+            this.showBeaconConfig(newlyConnectedDevice);
+        }
     }
 
     selectNextComponent(backward) {
@@ -238,7 +252,7 @@ class DeviceDetailsContainer extends React.PureComponent {
                 </div>
                 <DfuDialog />
                 {beaconDevice && (
-                    <BeaconConfigDialog
+                    <BeaconConfigDialogModal
                         device={beaconDevice}
                         deviceDetails={deviceDetails}
                         onHide={this.hideBeaconConfig}
