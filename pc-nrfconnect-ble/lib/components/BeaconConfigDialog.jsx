@@ -20,8 +20,10 @@ import { logger } from 'pc-nrfconnect-shared';
 import PropTypes from 'prop-types';
 
 import { getInstanceIds } from '../utils/api';
+import { appendDeviceParametersToCsv } from '../utils/appendToCsv';
 import {
     createIbeaconCommand,
+    getIbeaconValuesFromDevice,
     IBEACON_COMMAND,
     parseIbeaconResponse,
 } from '../utils/ibeaconProtocol';
@@ -126,7 +128,7 @@ export class BeaconConfigDialog extends React.PureComponent {
     }
 
     async prepare() {
-        const { device, onPrepare } = this.props;
+        const { device, onPrepare, scannedDevice } = this.props;
         try {
             const configuration = await onPrepare(device);
             logger.info(
@@ -139,6 +141,7 @@ export class BeaconConfigDialog extends React.PureComponent {
                         configuration.responseCharacteristic.instanceId,
                     values: {
                         ...this.state.values,
+                        ...getIbeaconValuesFromDevice(scannedDevice || device),
                         password: DEFAULT_IBEACON_PASSWORD,
                     },
                     status: 'Notifications enabled. Verifying the default password…',
@@ -266,6 +269,27 @@ export class BeaconConfigDialog extends React.PureComponent {
             nextValues.broadcastInterval = String(
                 response.values.broadcastInterval
             );
+        }
+
+        if (
+            response.command !== IBEACON_COMMAND.PASSWORD_CHECK &&
+            response.command !== IBEACON_COMMAND.PASSWORD_SET
+        ) {
+            try {
+                appendDeviceParametersToCsv({
+                    mac: this.props.device.address,
+                    uuid: nextValues.uuid,
+                    major: nextValues.major,
+                    minor: nextValues.minor,
+                    rssiAt1m: nextValues.rssiAt1m,
+                    txPower: nextValues.txPower,
+                    broadcastInterval: nextValues.broadcastInterval,
+                });
+            } catch (error) {
+                logger.warn(
+                    `[iBeacon] parameter log failed reason=${error.message}`
+                );
+            }
         }
 
         this.setState({
@@ -418,10 +442,12 @@ BeaconConfigDialog.propTypes = {
     onHide: PropTypes.func.isRequired,
     onPrepare: PropTypes.func.isRequired,
     onWriteCharacteristic: PropTypes.func.isRequired,
+    scannedDevice: PropTypes.object,
 };
 
 BeaconConfigDialog.defaultProps = {
     deviceDetails: null,
+    scannedDevice: null,
 };
 
 export default BeaconConfigDialog;

@@ -13,7 +13,7 @@ import * as AdapterAction from '../actions/adapterActions';
 import * as DiscoveryAction from '../actions/discoveryActions';
 import { persistentStore } from '../common/Persistentstore';
 import * as apiHelper from '../utils/api';
-import { appendToCsv } from '../utils/appendToCsv';
+import { appendScanToCsv } from '../utils/appendToCsv';
 
 export const DiscoveryOptions = params =>
     new Record({
@@ -62,7 +62,7 @@ function scanStopped(state) {
     }
 
     if (foundDevice) {
-        appendToCsv({
+        appendScanToCsv({
             avg: `${(
                 foundDevice.allRssi.reduce((a, b) => a + b, 0) /
                 foundDevice.allRssi.size

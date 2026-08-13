@@ -162,6 +162,7 @@ class DeviceDetailsContainer extends React.PureComponent {
             openCustomUuidFile,
             showDfuDialog,
             prepareIbeaconConfiguration,
+            discoveryDevices,
         } = this.props;
         const { beaconDevice } = this.state;
 
@@ -254,6 +255,10 @@ class DeviceDetailsContainer extends React.PureComponent {
                 {beaconDevice && (
                     <BeaconConfigDialogModal
                         device={beaconDevice}
+                        scannedDevice={
+                            discoveryDevices &&
+                            discoveryDevices.get(beaconDevice.address)
+                        }
                         deviceDetails={deviceDetails}
                         onHide={this.hideBeaconConfig}
                         onPrepare={prepareIbeaconConfiguration}
@@ -283,6 +288,7 @@ function mapStateToProps(state) {
         deviceDetails: selectedAdapter.deviceDetails,
         autoConnUpdate: adapter.autoConnUpdate,
         security: selectedAdapter.security,
+        discoveryDevices: state.app.discovery.devices,
     };
 }
 
@@ -309,6 +315,7 @@ DeviceDetailsContainer.propTypes = {
     selectedComponent: PropTypes.string,
     deviceDetails: PropTypes.object,
     connectedDevices: PropTypes.object,
+    discoveryDevices: PropTypes.object,
     // deviceServers: PropTypes.object,
     readCharacteristic: PropTypes.func.isRequired,
     writeCharacteristic: PropTypes.func.isRequired,
@@ -343,6 +350,7 @@ DeviceDetailsContainer.defaultProps = {
     selectedComponent: null,
     deviceDetails: null,
     connectedDevices: null,
+    discoveryDevices: null,
     security: null,
     autoConnUpdate: false,
 };

@@ -176,6 +176,64 @@ export function attachIbeaconDescriptors(characteristic, descriptors) {
     };
 }
 
+export function parseIbeaconAdvertisement(value) {
+    let bytes = value;
+    if (typeof value === 'string') {
+        bytes = value.split(',').map(byte => Number(byte.trim()));
+    }
+    bytes = Array.from(bytes || []);
+    const isIbeacon =
+        bytes.length >= 25 &&
+        bytes[0] === 0x4c &&
+        bytes[1] === 0x00 &&
+        bytes[2] === 0x02 &&
+        bytes[3] === 0x15;
+    if (!isIbeacon) {
+        return null;
+    }
+
+    return {
+        uuid: bytes
+            .slice(4, 20)
+            .map(byte => byte.toString(16).padStart(2, '0'))
+            .join('')
+            .toUpperCase(),
+        major: (bytes[20] << 8) | bytes[21],
+        minor: (bytes[22] << 8) | bytes[23],
+        rssiAt1m: signedByte(bytes[24]),
+    };
+}
+
+function getDeviceProperty(device, key) {
+    if (!device) {
+        return undefined;
+    }
+    return typeof device.get === 'function' ? device.get(key) : device[key];
+}
+
+export function getIbeaconValuesFromDevice(device) {
+    const adData = getDeviceProperty(device, 'adData');
+    const manufacturerData = getDeviceProperty(
+        adData,
+        'manufacturerSpecificData'
+    );
+    const parsed = parseIbeaconAdvertisement(manufacturerData);
+    if (!parsed) {
+        return {};
+    }
+
+    const txPowerLevel = getDeviceProperty(adData, 'txPowerLevel');
+    return {
+        uuid: parsed.uuid,
+        major: String(parsed.major),
+        minor: String(parsed.minor),
+        rssiAt1m: String(parsed.rssiAt1m),
+        ...(txPowerLevel !== undefined && txPowerLevel !== null
+            ? { txPower: String(txPowerLevel) }
+            : {}),
+    };
+}
+
 function signedByte(byte) {
     return byte > 0x7f ? byte - 0x100 : byte;
 }
