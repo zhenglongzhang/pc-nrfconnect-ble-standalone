@@ -166,6 +166,16 @@ export function shouldWriteIbeaconCommandWithResponse(characteristic) {
     );
 }
 
+export function attachIbeaconDescriptors(characteristic, descriptors) {
+    return {
+        instanceId: characteristic.instanceId,
+        serviceInstanceId: characteristic.serviceInstanceId,
+        uuid: characteristic.uuid,
+        properties: characteristic.properties,
+        descriptors,
+    };
+}
+
 function signedByte(byte) {
     return byte > 0x7f ? byte - 0x100 : byte;
 }

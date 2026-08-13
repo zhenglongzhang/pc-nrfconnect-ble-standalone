@@ -14,6 +14,7 @@ import { getInstanceIds } from '../utils/api';
 import { DEVICE_NAME_UUID, GENERIC_ACCESS_UUID } from '../utils/definitions';
 import openFileInDefaultApplication from '../utils/fileUtil';
 import {
+    attachIbeaconDescriptors,
     findIbeaconConfigurationAttributes,
     shouldWriteIbeaconCommandWithResponse,
 } from '../utils/ibeaconProtocol';
@@ -530,7 +531,9 @@ export function prepareIbeaconConfiguration(device) {
                     dispatch(
                         discoveredAttributesAction(characteristic, descriptors)
                     );
-                    characteristics.push({ ...characteristic, descriptors });
+                    characteristics.push(
+                        attachIbeaconDescriptors(characteristic, descriptors)
+                    );
                 }
             }
 
