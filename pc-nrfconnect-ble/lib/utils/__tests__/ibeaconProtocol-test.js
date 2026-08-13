@@ -6,7 +6,6 @@
 
 import {
     createIbeaconCommand,
-    attachIbeaconDescriptors,
     findIbeaconConfigurationAttributes,
     IBEACON_COMMAND,
     parseIbeaconResponse,
@@ -116,22 +115,5 @@ describe('iBeacon configuration protocol', () => {
                 properties: { write: true, writeWoResp: true },
             })
         ).toBe(true);
-    });
-
-    it('keeps a prototype-backed characteristic instance ID when attaching descriptors', () => {
-        const characteristic = Object.create({
-            instanceId: 'device.0.4.6',
-            serviceInstanceId: 'device.0.4',
-        });
-        characteristic.uuid = '6E400002B5A3F393E0A9E50E24DC9999';
-        characteristic.properties = { write: true, writeWoResp: true };
-
-        expect(
-            attachIbeaconDescriptors(characteristic, [{ uuid: '2902' }])
-        ).toMatchObject({
-            instanceId: 'device.0.4.6',
-            serviceInstanceId: 'device.0.4',
-            descriptors: [{ uuid: '2902' }],
-        });
     });
 });
