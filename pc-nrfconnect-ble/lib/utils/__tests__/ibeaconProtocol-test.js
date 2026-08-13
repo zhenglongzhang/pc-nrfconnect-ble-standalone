@@ -9,6 +9,7 @@ import {
     findIbeaconConfigurationAttributes,
     IBEACON_COMMAND,
     parseIbeaconResponse,
+    shouldWriteIbeaconCommandWithResponse,
 } from '../ibeaconProtocol';
 
 describe('iBeacon configuration protocol', () => {
@@ -106,5 +107,13 @@ describe('iBeacon configuration protocol', () => {
             responseCharacteristic: notifiable,
             responseCccd: notifiable.descriptors[0],
         });
+    });
+
+    it('uses a write response when the configuration characteristic supports both write modes', () => {
+        expect(
+            shouldWriteIbeaconCommandWithResponse({
+                properties: { write: true, writeWoResp: true },
+            })
+        ).toBe(true);
     });
 });

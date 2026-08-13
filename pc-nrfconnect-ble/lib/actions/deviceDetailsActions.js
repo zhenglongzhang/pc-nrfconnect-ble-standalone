@@ -13,7 +13,10 @@ import { logger } from 'pc-nrfconnect-shared';
 import { getInstanceIds } from '../utils/api';
 import { DEVICE_NAME_UUID, GENERIC_ACCESS_UUID } from '../utils/definitions';
 import openFileInDefaultApplication from '../utils/fileUtil';
-import { findIbeaconConfigurationAttributes } from '../utils/ibeaconProtocol';
+import {
+    findIbeaconConfigurationAttributes,
+    shouldWriteIbeaconCommandWithResponse,
+} from '../utils/ibeaconProtocol';
 import { toHexString } from '../utils/stringUtil';
 import { getUuidDefinitionsFilePath } from '../utils/uuid_definitions';
 import { showErrorDialog } from './errorDialogActions';
@@ -366,7 +369,7 @@ export function writeCharacteristic(characteristic, value) {
                 return;
             }
 
-            const ack = !characteristic.properties.writeWoResp;
+            const ack = shouldWriteIbeaconCommandWithResponse(characteristic);
             logger.debug(
                 `[iBeacon] write request characteristic=${
                     characteristic.instanceId

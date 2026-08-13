@@ -158,6 +158,14 @@ export function findIbeaconConfigurationAttributes(characteristics) {
     };
 }
 
+export function shouldWriteIbeaconCommandWithResponse(characteristic) {
+    return Boolean(
+        characteristic &&
+            characteristic.properties &&
+            characteristic.properties.write === true
+    );
+}
+
 function signedByte(byte) {
     return byte > 0x7f ? byte - 0x100 : byte;
 }
