@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { shallow } from 'enzyme';
+import { logger } from 'pc-nrfconnect-shared';
 
 import { IBEACON_COMMAND } from '../../utils/ibeaconProtocol';
 import {
@@ -34,6 +35,10 @@ function createDialog(overrides = {}) {
 }
 
 describe('BeaconConfigDialog', () => {
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
     it('verifies the default password after notifications are enabled', async () => {
         const onWriteCharacteristic = jest.fn();
         const wrapper = createDialog({ onWriteCharacteristic });
@@ -48,6 +53,20 @@ describe('BeaconConfigDialog', () => {
             IBEACON_COMMAND.PASSWORD_CHECK
         );
         expect(wrapper.state('values').password).toBe(DEFAULT_IBEACON_PASSWORD);
+    });
+
+    it('logs the raw password verification frame before writing it', async () => {
+        const debug = jest.spyOn(logger, 'debug').mockImplementation(() => {});
+        const wrapper = createDialog();
+
+        await wrapper.instance().prepare();
+
+        expect(debug).toHaveBeenCalledWith(
+            expect.stringContaining(
+                '[iBeacon] command send command=PASSWORD_CHECK'
+            )
+        );
+        expect(debug).toHaveBeenCalledWith(expect.stringContaining('A1-05-E0'));
     });
 
     it('asks for a password when password verification is rejected', () => {

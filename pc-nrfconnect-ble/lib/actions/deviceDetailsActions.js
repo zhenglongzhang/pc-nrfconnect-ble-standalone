@@ -14,6 +14,7 @@ import { getInstanceIds } from '../utils/api';
 import { DEVICE_NAME_UUID, GENERIC_ACCESS_UUID } from '../utils/definitions';
 import openFileInDefaultApplication from '../utils/fileUtil';
 import { findIbeaconConfigurationAttributes } from '../utils/ibeaconProtocol';
+import { toHexString } from '../utils/stringUtil';
 import { getUuidDefinitionsFilePath } from '../utils/uuid_definitions';
 import { showErrorDialog } from './errorDialogActions';
 
@@ -366,6 +367,11 @@ export function writeCharacteristic(characteristic, value) {
             }
 
             const ack = !characteristic.properties.writeWoResp;
+            logger.debug(
+                `[iBeacon] write request characteristic=${
+                    characteristic.instanceId
+                } ack=${ack} data=${toHexString(value)}`
+            );
 
             adapterToUse.writeCharacteristicValue(
                 characteristic.instanceId,
@@ -373,6 +379,9 @@ export function writeCharacteristic(characteristic, value) {
                 ack,
                 error => {
                     if (error) {
+                        logger.error(
+                            `[iBeacon] write failed characteristic=${characteristic.instanceId} error=${error.message}`
+                        );
                         dispatch(
                             completedWritingAttributeAction(
                                 characteristic,
@@ -383,6 +392,9 @@ export function writeCharacteristic(characteristic, value) {
                         reject(new Error(error.message));
                         return;
                     }
+                    logger.debug(
+                        `[iBeacon] write completed characteristic=${characteristic.instanceId}`
+                    );
                     dispatch(
                         completedWritingAttributeAction(characteristic, value)
                     );
@@ -438,15 +450,26 @@ function getDescriptors(adapter, characteristic) {
 
 function enableNotifications(adapter, descriptor) {
     return new Promise((resolve, reject) => {
+        logger.debug(
+            `[iBeacon] CCCD enable request descriptor=${
+                descriptor.instanceId
+            } data=${toHexString([1, 0])}`
+        );
         adapter.writeDescriptorValue(
             descriptor.instanceId,
             [1, 0],
             true,
             error => {
                 if (error) {
+                    logger.error(
+                        `[iBeacon] CCCD enable failed descriptor=${descriptor.instanceId} error=${error.message}`
+                    );
                     reject(new Error(error.message));
                     return;
                 }
+                logger.info(
+                    `[iBeacon] CCCD enabled descriptor=${descriptor.instanceId}`
+                );
                 resolve();
             }
         );
@@ -463,6 +486,9 @@ export function prepareIbeaconConfiguration(device) {
         }
 
         try {
+            logger.info(
+                `[iBeacon] prepare start device=${device.instanceId} address=${device.address}`
+            );
             dispatch(discoveringAttributesAction(device));
             const services = await getServices(adapterToUse, device);
             dispatch(discoveredAttributesAction(device, services));
@@ -507,6 +533,9 @@ export function prepareIbeaconConfiguration(device) {
 
             const configuration =
                 findIbeaconConfigurationAttributes(characteristics);
+            logger.info(
+                `[iBeacon] attributes selected write=${configuration.writeCharacteristic.instanceId} writeUuid=${configuration.writeCharacteristic.uuid} notify=${configuration.responseCharacteristic.instanceId} notifyUuid=${configuration.responseCharacteristic.uuid} cccd=${configuration.responseCccd.instanceId}`
+            );
             await enableNotifications(adapterToUse, configuration.responseCccd);
             dispatch(
                 completedWritingAttributeAction(
@@ -516,6 +545,9 @@ export function prepareIbeaconConfiguration(device) {
             );
             return configuration;
         } catch (error) {
+            logger.error(
+                `[iBeacon] prepare failed device=${device.instanceId} error=${error.message}`
+            );
             dispatch(showErrorDialog(error));
             throw error;
         }

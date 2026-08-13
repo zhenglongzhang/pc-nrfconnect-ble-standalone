@@ -16,6 +16,7 @@ import React from 'react';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
+import { logger } from 'pc-nrfconnect-shared';
 import PropTypes from 'prop-types';
 
 import { getInstanceIds } from '../utils/api';
@@ -24,6 +25,7 @@ import {
     IBEACON_COMMAND,
     parseIbeaconResponse,
 } from '../utils/ibeaconProtocol';
+import { toHexString } from '../utils/stringUtil';
 
 const TX_POWER_OPTIONS = [-40, -20, -16, -12, -8, -4, 0, 4];
 const INTERVAL_OPTIONS = [
@@ -127,6 +129,9 @@ export class BeaconConfigDialog extends React.PureComponent {
         const { device, onPrepare } = this.props;
         try {
             const configuration = await onPrepare(device);
+            logger.info(
+                `[iBeacon] ready device=${device.instanceId} write=${configuration.writeCharacteristic.instanceId} notify=${configuration.responseCharacteristic.instanceId}`
+            );
             this.setState(
                 {
                     configuration,
@@ -176,6 +181,9 @@ export class BeaconConfigDialog extends React.PureComponent {
             statusType: 'info',
         });
         this.timeout = setTimeout(() => {
+            logger.warn(
+                `[iBeacon] response timeout command=${command} notify=${configuration.responseCharacteristic.instanceId}`
+            );
             this.setState({
                 pendingCommand: null,
                 passwordRequired: command === IBEACON_COMMAND.PASSWORD_CHECK,
@@ -187,6 +195,11 @@ export class BeaconConfigDialog extends React.PureComponent {
             });
         }, 5000);
 
+        logger.debug(
+            `[iBeacon] command send command=${command} write=${
+                configuration.writeCharacteristic.instanceId
+            } data=${toHexString(frame)}`
+        );
         onWriteCharacteristic(configuration.writeCharacteristic, frame);
     }
 
@@ -196,12 +209,27 @@ export class BeaconConfigDialog extends React.PureComponent {
         try {
             response = parseIbeaconResponse(value);
         } catch (error) {
+            logger.warn(
+                `[iBeacon] response ignored reason=${
+                    error.message
+                } data=${toHexString(value)}`
+            );
             return;
         }
         if (response.command !== pendingCommand) {
+            logger.warn(
+                `[iBeacon] response ignored expected=${pendingCommand} actual=${
+                    response.command
+                } data=${toHexString(value)}`
+            );
             return;
         }
 
+        logger.info(
+            `[iBeacon] response received command=${response.command} success=${
+                response.success
+            } data=${toHexString(value)}`
+        );
         this.clearTimeout();
         if (!response.success) {
             this.setState({
