@@ -27,6 +27,12 @@ export function toHexString(value) {
     return '';
 }
 
+export function formatBleNotificationLog(handle, value) {
+    return `[BLE notification] handle=0x${toHexString(
+        handle
+    )} data=${toHexString(value)}`;
+}
+
 export function hexStringToArray(oldHexString) {
     let hexString = oldHexString;
     const result = [];

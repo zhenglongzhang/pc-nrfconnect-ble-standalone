@@ -16,7 +16,11 @@ import { getDeviceLibContext, logger } from 'pc-nrfconnect-shared';
 
 import { getJlinkDeviceInfo } from '../api/jlink';
 import { isSupportedJLinkDevice } from '../utils/devices';
-import { hexStringToArray, toHexString } from '../utils/stringUtil';
+import {
+    formatBleNotificationLog,
+    hexStringToArray,
+    toHexString,
+} from '../utils/stringUtil';
 import { BLEEventState, BLEPHYType } from './common';
 import { discoverServices } from './deviceDetailsActions';
 import { scanStopped } from './discoveryActions';
@@ -831,6 +835,7 @@ function onAttributeValueChanged(dispatch, getState, attribute, handle) {
             handle
         )}, value (0x): ${toHexString(val)}`
     );
+    logger.debug(formatBleNotificationLog(handle, val));
 
     if (!throttledValueChangedDispatch) {
         throttledValueChangedDispatch = _.throttle(

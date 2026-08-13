@@ -32,7 +32,7 @@ const INTERVAL_OPTIONS = [
 ];
 export const DEFAULT_IBEACON_PASSWORD = '123456';
 
-function getCharacteristicValue(deviceDetails, instanceId) {
+export function getCharacteristicValue(deviceDetails, instanceId) {
     if (!deviceDetails || !instanceId) {
         return null;
     }
@@ -42,9 +42,14 @@ function getCharacteristicValue(deviceDetails, instanceId) {
         device && device.children && device.children.get(ids.service);
     const characteristic =
         service && service.children && service.children.get(ids.characteristic);
-    return characteristic && characteristic.value
-        ? characteristic.value.toArray()
-        : null;
+    if (!characteristic || !characteristic.value) {
+        return null;
+    }
+
+    const { value } = characteristic;
+    const valueForDevice =
+        typeof value.get === 'function' && value.get(ids.device);
+    return (valueForDevice || value).toArray();
 }
 
 export class BeaconConfigDialog extends React.PureComponent {
