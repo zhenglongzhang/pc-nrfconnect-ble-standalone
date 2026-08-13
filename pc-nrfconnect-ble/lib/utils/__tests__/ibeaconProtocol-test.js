@@ -84,4 +84,27 @@ describe('iBeacon configuration protocol', () => {
             responseCccd: firstNotifiable.descriptors[0],
         });
     });
+
+    it('selects a write-with-response characteristic that also supports write without response', () => {
+        const writableWithBothModes = {
+            instanceId: 'write',
+            properties: { write: true, writeWoResp: true },
+        };
+        const notifiable = {
+            instanceId: 'notify',
+            properties: { notify: true },
+            descriptors: [{ uuid: '2902', instanceId: 'cccd' }],
+        };
+
+        expect(
+            findIbeaconConfigurationAttributes([
+                writableWithBothModes,
+                notifiable,
+            ])
+        ).toEqual({
+            writeCharacteristic: writableWithBothModes,
+            responseCharacteristic: notifiable,
+            responseCccd: notifiable.descriptors[0],
+        });
+    });
 });

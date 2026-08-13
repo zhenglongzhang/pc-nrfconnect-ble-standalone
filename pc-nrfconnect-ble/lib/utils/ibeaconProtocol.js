@@ -131,8 +131,7 @@ export function findIbeaconConfigurationAttributes(characteristics) {
     const writeCharacteristic = characteristics.find(
         characteristic =>
             characteristic.properties &&
-            characteristic.properties.write === true &&
-            characteristic.properties.writeWoResp !== true
+            characteristic.properties.write === true
     );
     const responseCharacteristic = characteristics.find(
         characteristic =>
