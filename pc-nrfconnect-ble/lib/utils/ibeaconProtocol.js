@@ -211,18 +211,30 @@ function getDeviceProperty(device, key) {
     return typeof device.get === 'function' ? device.get(key) : device[key];
 }
 
+function getAdvertisementProperty(adData, keys) {
+    return keys.reduce((value, key) => {
+        if (value !== undefined) {
+            return value;
+        }
+        return getDeviceProperty(adData, key);
+    }, undefined);
+}
+
 export function getIbeaconValuesFromDevice(device) {
     const adData = getDeviceProperty(device, 'adData');
-    const manufacturerData = getDeviceProperty(
-        adData,
-        'manufacturerSpecificData'
-    );
+    const manufacturerData = getAdvertisementProperty(adData, [
+        'BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA',
+        'manufacturerSpecificData',
+    ]);
+    const txPowerLevel = getAdvertisementProperty(adData, [
+        'BLE_GAP_AD_TYPE_TX_POWER_LEVEL',
+        'txPowerLevel',
+    ]);
     const parsed = parseIbeaconAdvertisement(manufacturerData);
     if (!parsed) {
         return {};
     }
 
-    const txPowerLevel = getDeviceProperty(adData, 'txPowerLevel');
     return {
         uuid: parsed.uuid,
         major: String(parsed.major),

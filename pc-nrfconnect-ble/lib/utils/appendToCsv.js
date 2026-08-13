@@ -37,10 +37,11 @@ function appendRow(recordType, values) {
         fs.writeFileSync(csvPath, `${CSV_HEADERS[recordType]}\n`);
     }
     fs.appendFileSync(csvPath, `${values.join(',')}\n`);
+    return csvPath;
 }
 
 export function appendScanToCsv({ avg, max, min, mac }) {
-    appendRow('scan', [getCurrentTime(), avg, max, min, mac]);
+    return appendRow('scan', [getCurrentTime(), avg, max, min, mac]);
 }
 
 export function appendDeviceParametersToCsv({
@@ -52,7 +53,7 @@ export function appendDeviceParametersToCsv({
     uuid = '',
     rssiAt1m = '',
 }) {
-    appendRow('device-parameters', [
+    return appendRow('device-parameters', [
         mac,
         major,
         minor,

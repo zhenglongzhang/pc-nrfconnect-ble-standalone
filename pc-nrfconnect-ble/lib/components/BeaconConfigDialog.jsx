@@ -131,8 +131,17 @@ export class BeaconConfigDialog extends React.PureComponent {
         const { device, onPrepare, scannedDevice } = this.props;
         try {
             const configuration = await onPrepare(device);
+            const prefillSource = scannedDevice || device;
+            const scannedValues = getIbeaconValuesFromDevice(prefillSource);
             logger.info(
                 `[iBeacon] ready device=${device.instanceId} write=${configuration.writeCharacteristic.instanceId} notify=${configuration.responseCharacteristic.instanceId}`
+            );
+            logger.info(
+                `[iBeacon] prefill source=${
+                    scannedDevice ? 'scan-cache' : 'connected-device'
+                } address=${device.address} values=${JSON.stringify(
+                    scannedValues
+                )}`
             );
             this.setState(
                 {
@@ -141,7 +150,7 @@ export class BeaconConfigDialog extends React.PureComponent {
                         configuration.responseCharacteristic.instanceId,
                     values: {
                         ...this.state.values,
-                        ...getIbeaconValuesFromDevice(scannedDevice || device),
+                        ...scannedValues,
                         password: DEFAULT_IBEACON_PASSWORD,
                     },
                     status: 'Notifications enabled. Verifying the default password…',
@@ -276,7 +285,7 @@ export class BeaconConfigDialog extends React.PureComponent {
             response.command !== IBEACON_COMMAND.PASSWORD_SET
         ) {
             try {
-                appendDeviceParametersToCsv({
+                const csvPath = appendDeviceParametersToCsv({
                     mac: this.props.device.address,
                     uuid: nextValues.uuid,
                     major: nextValues.major,
@@ -285,6 +294,7 @@ export class BeaconConfigDialog extends React.PureComponent {
                     txPower: nextValues.txPower,
                     broadcastInterval: nextValues.broadcastInterval,
                 });
+                logger.info(`[iBeacon] parameter log appended path=${csvPath}`);
             } catch (error) {
                 logger.warn(
                     `[iBeacon] parameter log failed reason=${error.message}`

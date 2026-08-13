@@ -41,6 +41,30 @@ function scanStarted(state) {
     return state;
 }
 
+function appendDeviceScanRecord(device, reason) {
+    const rssiSamples = device.allRssi.filter(Number.isFinite);
+    if (rssiSamples.size === 0) {
+        logger.warn(
+            `[scan-csv] skipped reason=${reason} address=${device.address} no RSSI samples`
+        );
+        return;
+    }
+
+    const average =
+        rssiSamples.reduce((sum, rssi) => sum + rssi, 0) / rssiSamples.size;
+    const record = {
+        avg: `${average.toFixed(2)} dBm`,
+        max: `${rssiSamples.max()} dBm`,
+        min: `${rssiSamples.min()} dBm`,
+        mac: device.address,
+    };
+    logger.info(
+        `[scan-csv] append reason=${reason} address=${record.mac} samples=${rssiSamples.size} avg=${record.avg} max=${record.max} min=${record.min}`
+    );
+    const csvPath = appendScanToCsv(record);
+    logger.info(`[scan-csv] appended path=${csvPath}`);
+}
+
 function scanStopped(state) {
     logger.info('Scan stopped');
     const { devices, options } = state;
@@ -62,15 +86,11 @@ function scanStopped(state) {
     }
 
     if (foundDevice) {
-        appendScanToCsv({
-            avg: `${(
-                foundDevice.allRssi.reduce((a, b) => a + b, 0) /
-                foundDevice.allRssi.size
-            ).toFixed(2)} dBm`,
-            max: `${foundDevice.allRssi.max()} dBm`,
-            min: `${foundDevice.allRssi.min()} dBm`,
-            mac: foundDevice.address,
-        });
+        appendDeviceScanRecord(foundDevice, 'scan-stopped');
+    } else {
+        logger.warn(
+            '[scan-csv] skipped reason=scan-stopped no discovered device'
+        );
     }
     return state;
 }
@@ -144,7 +164,11 @@ function clearList(state) {
 }
 
 function deviceConnect(state, device) {
-    if (state.devices.get(device.address)) {
+    const discoveredDevice = state.devices.get(device.address);
+    if (discoveredDevice) {
+        // adapter.connect() stops scanning internally, without dispatching
+        // DISCOVERY_SCAN_STOPPED, so persist the selected scan before connecting.
+        appendDeviceScanRecord(discoveredDevice, 'device-connect');
         return state.setIn(['devices', device.address, 'isConnecting'], true);
     }
     return state;
