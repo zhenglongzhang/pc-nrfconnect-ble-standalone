@@ -39,6 +39,23 @@ const CODE_COMMAND = Object.keys(COMMAND_CODE).reduce(
     {}
 );
 
+export const GLD_MAX_SERIAL_NUMBER = 0x0fffffff;
+
+export function decodeGldBroadcastData(major, minor) {
+    const batteryLevel = (major >> 12) & 0x0f;
+    const serialNumber = ((major & 0x0fff) << 16) | (minor & 0xffff);
+
+    return {
+        batteryLevel,
+        serialNumber,
+        isValid:
+            batteryLevel >= 0 &&
+            batteryLevel <= 10 &&
+            serialNumber >= 1 &&
+            serialNumber <= GLD_MAX_SERIAL_NUMBER,
+    };
+}
+
 function crc8Maxim(bytes) {
     return bytes.reduce((crc, byte) => {
         let nextCrc = crc ^ byte;

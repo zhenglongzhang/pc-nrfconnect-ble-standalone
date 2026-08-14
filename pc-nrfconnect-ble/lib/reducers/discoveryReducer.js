@@ -26,6 +26,7 @@ export const DiscoveryOptions = params =>
         scanWindow: 20,
         scanTimeout: persistentStore.scanTimeout(),
         activeScan: persistentStore.activeScan(),
+        gldVersion: persistentStore.gldVersion(),
         filterRegexp: '',
     })(params);
 
@@ -217,6 +218,7 @@ function toggleOptionsExpanded(state) {
 }
 
 function discoverySetOptions(state, options) {
+    persistentStore.setGldVersion(options.gldVersion);
     const newOptions = {
         ...options,
         filterRegexp: new RegExp(options.namefilterString, 'i'),

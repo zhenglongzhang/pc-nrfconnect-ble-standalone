@@ -46,6 +46,10 @@ class DiscoveredDevices extends React.PureComponent {
             this,
             'sortByRssi'
         );
+        this.handleGldVersionCheckedChange = this.handleCheckedChange.bind(
+            this,
+            'gldVersion'
+        );
         this.handleActiveScanCheck = this.handleActiveScanCheck.bind(this);
     }
 
@@ -120,6 +124,14 @@ class DiscoveredDevices extends React.PureComponent {
                         defaultChecked={discoveryOptions.sortByRssi}
                         onChange={this.handleSortByRssiCheckedChange}
                         label="按信号强度排序"
+                    />
+                </Form.Group>
+                <Form.Group controlId="gldVersionCheck">
+                    <Form.Check
+                        className="adv-label"
+                        checked={discoveryOptions.gldVersion}
+                        onChange={this.handleGldVersionCheckedChange}
+                        label="GLD版本"
                     />
                 </Form.Group>
                 <TextInput
@@ -244,6 +256,7 @@ class DiscoveredDevices extends React.PureComponent {
                                 standalone={false}
                                 adapterIsConnecting={adapterIsConnecting}
                                 isConnecting={device.isConnecting}
+                                gldVersion={discoveryOptions.gldVersion}
                                 onConnect={connectToDevice}
                                 onCancelConnect={cancelConnect}
                                 onToggleExpanded={toggleExpanded}

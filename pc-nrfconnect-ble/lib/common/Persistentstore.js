@@ -15,6 +15,7 @@ const AUTO_UPDATE_KEY = 'AutoUpdate';
 const SECURITY_KEY = 'Security';
 const ACTIVE_SCAN = 'ActiveScan';
 const SCAN_TIMEOUT = 'ScanTimeout';
+const GLD_VERSION = 'GldVersion';
 const ADV_PARAMS = 'AdvParams';
 const CON_PARAMS = 'ConParams';
 
@@ -34,6 +35,7 @@ export const persistentStore = {
     setAutoConnUpdate: writeToStore(AUTO_UPDATE_KEY),
     setActiveScan: writeToStore(ACTIVE_SCAN),
     setScanTimeout: writeToStore(SCAN_TIMEOUT),
+    setGldVersion: writeToStore(GLD_VERSION),
     setAdvParams: writeToStore(ADV_PARAMS),
     setConnectionParams: writeToStore(CON_PARAMS),
     secParams: defaultParams => ({
@@ -46,6 +48,7 @@ export const persistentStore = {
     autoConnUpdate: () => store.get(AUTO_UPDATE_KEY, true),
     activeScan: () => store.get(ACTIVE_SCAN, true),
     scanTimeout: () => store.get(SCAN_TIMEOUT, 60),
+    gldVersion: () => store.get(GLD_VERSION, false),
     advParams: () => store.get(ADV_PARAMS, { interval: 100, timeout: 0 }),
     connectionParams: defaultParams => ({
         ...defaultParams,

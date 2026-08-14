@@ -12,6 +12,10 @@ import { camelCase, pascalCase } from 'change-case';
 import PropTypes from 'prop-types';
 
 import { ImmutableDevice } from '../utils/api';
+import {
+    decodeGldBroadcastData,
+    getIbeaconValuesFromDevice,
+} from '../utils/ibeaconProtocol';
 import { toHexString } from '../utils/stringUtil';
 import { getUuidName } from '../utils/uuid_definitions';
 
@@ -138,6 +142,7 @@ class DiscoveredDevice extends React.PureComponent {
         let servicesDiv = '';
         let addressDiv = '';
         let addressTypeDiv = '';
+        let ibeaconDiv = '';
 
         if (device.isExpanded) {
             if (device.advType) {
@@ -177,6 +182,40 @@ class DiscoveredDevice extends React.PureComponent {
                         .values()}
                 </div>
             );
+
+            const ibeaconValues = getIbeaconValuesFromDevice(device);
+            if (ibeaconValues.uuid) {
+                const gldData = decodeGldBroadcastData(
+                    Number(ibeaconValues.major),
+                    Number(ibeaconValues.minor)
+                );
+                const details = [
+                    ['UUID', ibeaconValues.uuid],
+                    ['RSSI at 1m', `${ibeaconValues.rssiAt1m} dBm`],
+                ];
+
+                if (this.props.gldVersion && gldData.isValid) {
+                    details.push(['Battery level', gldData.batteryLevel]);
+                    details.push(['Serial number', gldData.serialNumber]);
+                } else if (!this.props.gldVersion) {
+                    details.push(['Major', ibeaconValues.major]);
+                    details.push(['Minor', ibeaconValues.minor]);
+                }
+
+                ibeaconDiv = (
+                    <div>
+                        {details.map(([label, value]) => (
+                            <div
+                                key={label}
+                                className="adv-line selectable"
+                            >
+                                <span className="adv-label">{label}:</span>
+                                <span className="adv-value">{value}</span>
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
 
             advTypeDiv = this.currentAdvType ? (
                 <div className="adv-line selectable">
@@ -298,6 +337,7 @@ class DiscoveredDevice extends React.PureComponent {
                         {advTypeDiv}
                         {servicesDiv}
                         {flagsDiv}
+                        {ibeaconDiv}
                         {adDataDiv}
                     </div>
                 </div>
@@ -315,6 +355,11 @@ DiscoveredDevice.propTypes = {
     onConnect: PropTypes.func.isRequired,
     onCancelConnect: PropTypes.func.isRequired,
     onToggleExpanded: PropTypes.func.isRequired,
+    gldVersion: PropTypes.bool,
+};
+
+DiscoveredDevice.defaultProps = {
+    gldVersion: false,
 };
 
 export default DiscoveredDevice;
