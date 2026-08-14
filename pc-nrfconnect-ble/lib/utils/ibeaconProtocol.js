@@ -56,6 +56,24 @@ export function decodeGldBroadcastData(major, minor) {
     };
 }
 
+export function encodeGldBroadcastData(serialNumber, batteryLevel) {
+    const major =
+        ((batteryLevel & 0x0f) << 12) | ((serialNumber >> 16) & 0x0fff);
+    const minor = serialNumber & 0xffff;
+
+    return {
+        major,
+        minor,
+        isValid:
+            Number.isInteger(serialNumber) &&
+            serialNumber >= 1 &&
+            serialNumber <= GLD_MAX_SERIAL_NUMBER &&
+            Number.isInteger(batteryLevel) &&
+            batteryLevel >= 0 &&
+            batteryLevel <= 10,
+    };
+}
+
 function crc8Maxim(bytes) {
     return bytes.reduce((crc, byte) => {
         let nextCrc = crc ^ byte;

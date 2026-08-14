@@ -23,6 +23,8 @@ import { getInstanceIds } from '../utils/api';
 import { appendDeviceParametersToCsv } from '../utils/appendToCsv';
 import {
     createIbeaconCommand,
+    decodeGldBroadcastData,
+    encodeGldBroadcastData,
     getIbeaconValuesFromDevice,
     IBEACON_COMMAND,
     parseIbeaconResponse,
@@ -63,6 +65,8 @@ export class BeaconConfigDialog extends React.PureComponent {
         this.timeout = null;
         this.prepare = this.prepare.bind(this);
         this.send = this.send.bind(this);
+        this.submitGldSerialNumber = this.submitGldSerialNumber.bind(this);
+        this.submitScannerInput = this.submitScannerInput.bind(this);
         this.handleResponse = this.handleResponse.bind(this);
     }
 
@@ -102,17 +106,21 @@ export class BeaconConfigDialog extends React.PureComponent {
         return {
             configuration: null,
             pendingCommand: null,
+            pairWrite: null,
             responseInstanceId: null,
             verified: false,
             passwordRequired: false,
             status: 'Preparing iBeacon configuration…',
             statusType: 'info',
+            scannerInput: '',
             values: {
                 password: '',
                 newPassword: '',
                 uuid: '',
                 major: '',
                 minor: '',
+                serialNumber: '',
+                batteryLevel: '',
                 rssiAt1m: '',
                 txPower: '0',
                 broadcastInterval: '100',
@@ -133,6 +141,10 @@ export class BeaconConfigDialog extends React.PureComponent {
             const configuration = await onPrepare(device);
             const prefillSource = scannedDevice || device;
             const scannedValues = getIbeaconValuesFromDevice(prefillSource);
+            const gldData = decodeGldBroadcastData(
+                Number(scannedValues.major),
+                Number(scannedValues.minor)
+            );
             logger.info(
                 `[iBeacon] ready device=${device.instanceId} write=${configuration.writeCharacteristic.instanceId} notify=${configuration.responseCharacteristic.instanceId}`
             );
@@ -151,6 +163,12 @@ export class BeaconConfigDialog extends React.PureComponent {
                     values: {
                         ...this.state.values,
                         ...scannedValues,
+                        ...(gldData.isValid
+                            ? {
+                                  serialNumber: String(gldData.serialNumber),
+                                  batteryLevel: String(gldData.batteryLevel),
+                              }
+                            : {}),
                         password: DEFAULT_IBEACON_PASSWORD,
                     },
                     status: 'Notifications enabled. Verifying the default password…',
@@ -170,6 +188,89 @@ export class BeaconConfigDialog extends React.PureComponent {
     updateValue(name, event) {
         const { values } = this.state;
         this.setState({ values: { ...values, [name]: event.target.value } });
+    }
+
+    startPairWrite(major, minor, values) {
+        this.setState(
+            {
+                values: { ...this.state.values, ...values },
+                pairWrite: { minor: String(minor) },
+            },
+            () => this.send(IBEACON_COMMAND.MAJOR_SET, String(major))
+        );
+    }
+
+    submitGldSerialNumber(serialNumber = this.state.values.serialNumber) {
+        const { batteryLevel } = this.state.values;
+        const encoded = encodeGldBroadcastData(
+            Number(serialNumber),
+            Number(batteryLevel)
+        );
+        if (!encoded.isValid) {
+            this.setState({
+                status: 'SN or battery level is invalid.',
+                statusType: 'danger',
+            });
+            return;
+        }
+
+        this.startPairWrite(encoded.major, encoded.minor, {
+            major: String(encoded.major),
+            minor: String(encoded.minor),
+            serialNumber: String(serialNumber),
+        });
+    }
+
+    submitScannerInput() {
+        const { gldVersion } = this.props;
+        const { pendingCommand, verified, scannerInput } = this.state;
+        const payload = scannerInput.trim();
+        if (!verified || pendingCommand) {
+            return;
+        }
+
+        const majorMinor = payload.match(/^(\d+),(\d+)$/);
+        if (majorMinor) {
+            const major = Number(majorMinor[1]);
+            const minor = Number(majorMinor[2]);
+            if (major > 65535 || minor > 65535) {
+                this.setState({
+                    status: 'Major and Minor must be integers between 0 and 65535.',
+                    statusType: 'danger',
+                });
+                return;
+            }
+            this.setState({ scannerInput: '' });
+            this.startPairWrite(major, minor, {
+                major: String(major),
+                minor: String(minor),
+            });
+            return;
+        }
+
+        if (!/^\d+$/.test(payload)) {
+            this.setState({
+                status: 'Scanner data must be Major,Minor or a GLD SN.',
+                statusType: 'danger',
+            });
+            return;
+        }
+        if (!gldVersion) {
+            this.setState({
+                status: 'Enable GLD version before submitting an SN.',
+                statusType: 'danger',
+            });
+            return;
+        }
+        if (payload.length !== 9) {
+            this.setState({
+                status: 'GLD SN scanner data must contain exactly 9 digits.',
+                statusType: 'danger',
+            });
+            return;
+        }
+        this.setState({ scannerInput: '' });
+        this.submitGldSerialNumber(payload);
     }
 
     send(command, value) {
@@ -198,6 +299,7 @@ export class BeaconConfigDialog extends React.PureComponent {
             );
             this.setState({
                 pendingCommand: null,
+                pairWrite: null,
                 passwordRequired: command === IBEACON_COMMAND.PASSWORD_CHECK,
                 status:
                     command === IBEACON_COMMAND.PASSWORD_CHECK
@@ -216,7 +318,7 @@ export class BeaconConfigDialog extends React.PureComponent {
     }
 
     handleResponse(value) {
-        const { pendingCommand, values } = this.state;
+        const { pendingCommand, pairWrite, values } = this.state;
         let response;
         try {
             response = parseIbeaconResponse(value);
@@ -246,6 +348,7 @@ export class BeaconConfigDialog extends React.PureComponent {
         if (!response.success) {
             this.setState({
                 pendingCommand: null,
+                pairWrite: null,
                 passwordRequired:
                     response.command === IBEACON_COMMAND.PASSWORD_CHECK,
                 values:
@@ -280,6 +383,18 @@ export class BeaconConfigDialog extends React.PureComponent {
             );
         }
 
+        if (response.command === IBEACON_COMMAND.MAJOR_SET && pairWrite) {
+            this.setState(
+                { pendingCommand: null, values: nextValues },
+                () =>
+                    this.send(
+                        IBEACON_COMMAND.MINOR_SET,
+                        pairWrite.minor
+                    )
+            );
+            return;
+        }
+
         if (
             response.command !== IBEACON_COMMAND.PASSWORD_CHECK &&
             response.command !== IBEACON_COMMAND.PASSWORD_SET
@@ -304,6 +419,10 @@ export class BeaconConfigDialog extends React.PureComponent {
 
         this.setState({
             pendingCommand: null,
+            pairWrite:
+                response.command === IBEACON_COMMAND.MINOR_SET && pairWrite
+                    ? null
+                    : pairWrite,
             verified:
                 this.state.verified ||
                 response.command === IBEACON_COMMAND.PASSWORD_CHECK,
@@ -368,9 +487,50 @@ export class BeaconConfigDialog extends React.PureComponent {
         );
     }
 
+    renderReadOnlyField(label, name) {
+        const { values } = this.state;
+        return (
+            <Form.Group>
+                <Form.Label>{label}</Form.Label>
+                <Form.Control value={values[name]} readOnly />
+            </Form.Group>
+        );
+    }
+
+    renderGldSerialField() {
+        const { values, verified, pendingCommand } = this.state;
+        return (
+            <Form.Group>
+                <Form.Label>SN</Form.Label>
+                <div className="d-flex">
+                    <Form.Control
+                        value={values.serialNumber}
+                        disabled={!verified || !!pendingCommand}
+                        onChange={event =>
+                            this.updateValue('serialNumber', event)
+                        }
+                    />
+                    <Button
+                        className="ml-2"
+                        disabled={!verified || !!pendingCommand}
+                        onClick={this.submitGldSerialNumber}
+                    >
+                        Set
+                    </Button>
+                </div>
+            </Form.Group>
+        );
+    }
+
     render() {
-        const { device, onHide } = this.props;
-        const { pendingCommand, status, statusType, verified } = this.state;
+        const { device, gldVersion, onHide } = this.props;
+        const {
+            pendingCommand,
+            scannerInput,
+            status,
+            statusType,
+            verified,
+        } = this.state;
         return (
             <Modal show onHide={onHide} size="lg">
                 <Modal.Header closeButton>
@@ -382,6 +542,33 @@ export class BeaconConfigDialog extends React.PureComponent {
                     <div className={`alert alert-${statusType}`} role="alert">
                         {status}
                     </div>
+                    <Form.Group>
+                        <Form.Label>扫码下发</Form.Label>
+                        <div className="d-flex">
+                            <Form.Control
+                                value={scannerInput}
+                                disabled={!verified || !!pendingCommand}
+                                onChange={event =>
+                                    this.setState({
+                                        scannerInput: event.target.value,
+                                    })
+                                }
+                                onKeyDown={event => {
+                                    if (event.key === 'Enter') {
+                                        event.preventDefault();
+                                        this.submitScannerInput();
+                                    }
+                                }}
+                            />
+                            <Button
+                                className="ml-2"
+                                disabled={!verified || !!pendingCommand}
+                                onClick={this.submitScannerInput}
+                            >
+                                扫码下发
+                            </Button>
+                        </div>
+                    </Form.Group>
                     {this.state.passwordRequired &&
                         this.renderField(
                             'Password',
@@ -403,17 +590,29 @@ export class BeaconConfigDialog extends React.PureComponent {
                         IBEACON_COMMAND.UUID_SET,
                         !verified
                     )}
-                    {this.renderField(
-                        'Major',
-                        'major',
-                        IBEACON_COMMAND.MAJOR_SET,
-                        !verified
-                    )}
-                    {this.renderField(
-                        'Minor',
-                        'minor',
-                        IBEACON_COMMAND.MINOR_SET,
-                        !verified
+                    {gldVersion ? (
+                        <>
+                            {this.renderReadOnlyField(
+                                'Battery level',
+                                'batteryLevel'
+                            )}
+                            {this.renderGldSerialField()}
+                        </>
+                    ) : (
+                        <>
+                            {this.renderField(
+                                'Major',
+                                'major',
+                                IBEACON_COMMAND.MAJOR_SET,
+                                !verified
+                            )}
+                            {this.renderField(
+                                'Minor',
+                                'minor',
+                                IBEACON_COMMAND.MINOR_SET,
+                                !verified
+                            )}
+                        </>
                     )}
                     {this.renderField(
                         'RSSI at 1 m (dBm)',
@@ -453,11 +652,13 @@ BeaconConfigDialog.propTypes = {
     onPrepare: PropTypes.func.isRequired,
     onWriteCharacteristic: PropTypes.func.isRequired,
     scannedDevice: PropTypes.object,
+    gldVersion: PropTypes.bool,
 };
 
 BeaconConfigDialog.defaultProps = {
     deviceDetails: null,
     scannedDevice: null,
+    gldVersion: false,
 };
 
 export default BeaconConfigDialog;

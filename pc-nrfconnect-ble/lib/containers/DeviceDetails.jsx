@@ -163,6 +163,7 @@ class DeviceDetailsContainer extends React.PureComponent {
             showDfuDialog,
             prepareIbeaconConfiguration,
             discoveryDevices,
+            gldVersion,
         } = this.props;
         const { beaconDevice } = this.state;
 
@@ -263,6 +264,7 @@ class DeviceDetailsContainer extends React.PureComponent {
                         onHide={this.hideBeaconConfig}
                         onPrepare={prepareIbeaconConfiguration}
                         onWriteCharacteristic={writeCharacteristic}
+                        gldVersion={gldVersion}
                     />
                 )}
             </>
@@ -289,6 +291,7 @@ function mapStateToProps(state) {
         autoConnUpdate: adapter.autoConnUpdate,
         security: selectedAdapter.security,
         discoveryDevices: state.app.discovery.devices,
+        gldVersion: state.app.discovery.options.gldVersion,
     };
 }
 
@@ -316,6 +319,7 @@ DeviceDetailsContainer.propTypes = {
     deviceDetails: PropTypes.object,
     connectedDevices: PropTypes.object,
     discoveryDevices: PropTypes.object,
+    gldVersion: PropTypes.bool,
     // deviceServers: PropTypes.object,
     readCharacteristic: PropTypes.func.isRequired,
     writeCharacteristic: PropTypes.func.isRequired,
@@ -351,6 +355,7 @@ DeviceDetailsContainer.defaultProps = {
     deviceDetails: null,
     connectedDevices: null,
     discoveryDevices: null,
+    gldVersion: false,
     security: null,
     autoConnUpdate: false,
 };
