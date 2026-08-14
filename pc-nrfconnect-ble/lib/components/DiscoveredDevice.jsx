@@ -134,12 +134,8 @@ class DiscoveredDevice extends React.PureComponent {
     }
 
     render() {
-        const {
-            device,
-            isConnecting,
-            adapterIsConnecting,
-            gldVersion,
-        } = this.props;
+        const { device, isConnecting, adapterIsConnecting, gldVersion } =
+            this.props;
 
         let adDataDiv = '';
         let advTypeDiv = '';

@@ -384,13 +384,8 @@ export class BeaconConfigDialog extends React.PureComponent {
         }
 
         if (response.command === IBEACON_COMMAND.MAJOR_SET && pairWrite) {
-            this.setState(
-                { pendingCommand: null, values: nextValues },
-                () =>
-                    this.send(
-                        IBEACON_COMMAND.MINOR_SET,
-                        pairWrite.minor
-                    )
+            this.setState({ pendingCommand: null, values: nextValues }, () =>
+                this.send(IBEACON_COMMAND.MINOR_SET, pairWrite.minor)
             );
             return;
         }
@@ -524,13 +519,8 @@ export class BeaconConfigDialog extends React.PureComponent {
 
     render() {
         const { device, gldVersion, onHide } = this.props;
-        const {
-            pendingCommand,
-            scannerInput,
-            status,
-            statusType,
-            verified,
-        } = this.state;
+        const { pendingCommand, scannerInput, status, statusType, verified } =
+            this.state;
         return (
             <Modal show onHide={onHide} size="lg">
                 <Modal.Header closeButton>

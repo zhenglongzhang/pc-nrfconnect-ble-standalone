@@ -199,7 +199,9 @@ describe('BeaconConfigDialog', () => {
 
         wrapper
             .instance()
-            .handleResponse([0xa1, 0x06, 0xf2, 0x00, 0x51, 0x23, 0x45, 0x67, 0x4e]);
+            .handleResponse([
+                0xa1, 0x06, 0xf2, 0x00, 0x51, 0x23, 0x45, 0x67, 0x4e,
+            ]);
 
         expect(onWriteCharacteristic).toHaveBeenLastCalledWith(
             configuration.writeCharacteristic,
@@ -210,7 +212,11 @@ describe('BeaconConfigDialog', () => {
     it('parses a scanner Major,Minor payload and starts a pair write', () => {
         const onWriteCharacteristic = jest.fn();
         const wrapper = createDialog({ onWriteCharacteristic });
-        wrapper.setState({ configuration, verified: true, scannerInput: '18504,19226' });
+        wrapper.setState({
+            configuration,
+            verified: true,
+            scannerInput: '18504,19226',
+        });
 
         wrapper.instance().submitScannerInput();
 
@@ -226,7 +232,11 @@ describe('BeaconConfigDialog', () => {
 
     it('rejects an SN scanner payload outside GLD mode', () => {
         const wrapper = createDialog({ gldVersion: false });
-        wrapper.setState({ configuration, verified: true, scannerInput: '202606107' });
+        wrapper.setState({
+            configuration,
+            verified: true,
+            scannerInput: '202606107',
+        });
 
         wrapper.instance().submitScannerInput();
 
@@ -235,7 +245,11 @@ describe('BeaconConfigDialog', () => {
 
     it('rejects a scanner SN that is not nine digits', () => {
         const wrapper = createDialog({ gldVersion: true });
-        wrapper.setState({ configuration, verified: true, scannerInput: '20260610' });
+        wrapper.setState({
+            configuration,
+            verified: true,
+            scannerInput: '20260610',
+        });
 
         wrapper.instance().submitScannerInput();
 

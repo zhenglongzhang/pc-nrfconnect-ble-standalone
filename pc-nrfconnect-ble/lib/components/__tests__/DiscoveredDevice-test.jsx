@@ -10,9 +10,9 @@ jest.mock('../../utils/uuid_definitions', () => ({
     getUuidName: value => value,
 }));
 
+import React from 'react';
 import { shallow } from 'enzyme';
 import { List } from 'immutable';
-import React from 'react';
 
 import { getImmutableDevice } from '../../utils/api';
 import DiscoveredDevice from '../DiscoveredDevice';
