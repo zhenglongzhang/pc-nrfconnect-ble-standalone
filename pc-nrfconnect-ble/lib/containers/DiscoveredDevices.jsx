@@ -11,7 +11,6 @@ import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import { connect } from 'react-redux';
 import { OrderedMap } from 'immutable';
-import { logger } from 'pc-nrfconnect-shared';
 import PropTypes from 'prop-types';
 import { bindActionCreators } from 'redux';
 
@@ -22,7 +21,6 @@ import DiscoveryButton from '../components/DiscoveryButton';
 import TextInput from '../components/input/TextInput';
 import Spinner from '../components/Spinner';
 import { DiscoveryOptions } from '../reducers/discoveryReducer';
-import { toHexString } from '../utils/stringUtil';
 import withHotkey from '../utils/withHotkey';
 
 const matchesFilter = filterRegexp => device => {

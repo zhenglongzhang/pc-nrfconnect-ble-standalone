@@ -134,7 +134,12 @@ class DiscoveredDevice extends React.PureComponent {
     }
 
     render() {
-        const { device, isConnecting, adapterIsConnecting } = this.props;
+        const {
+            device,
+            isConnecting,
+            adapterIsConnecting,
+            gldVersion,
+        } = this.props;
 
         let adDataDiv = '';
         let advTypeDiv = '';
@@ -194,10 +199,10 @@ class DiscoveredDevice extends React.PureComponent {
                     ['RSSI at 1m', `${ibeaconValues.rssiAt1m} dBm`],
                 ];
 
-                if (this.props.gldVersion && gldData.isValid) {
+                if (gldVersion && gldData.isValid) {
                     details.push(['Battery level', gldData.batteryLevel]);
                     details.push(['Serial number', gldData.serialNumber]);
-                } else if (!this.props.gldVersion) {
+                } else if (!gldVersion) {
                     details.push(['Major', ibeaconValues.major]);
                     details.push(['Minor', ibeaconValues.minor]);
                 }
@@ -205,10 +210,7 @@ class DiscoveredDevice extends React.PureComponent {
                 ibeaconDiv = (
                     <div>
                         {details.map(([label, value]) => (
-                            <div
-                                key={label}
-                                className="adv-line selectable"
-                            >
+                            <div key={label} className="adv-line selectable">
                                 <span className="adv-label">{label}:</span>
                                 <span className="adv-value">{value}</span>
                             </div>
