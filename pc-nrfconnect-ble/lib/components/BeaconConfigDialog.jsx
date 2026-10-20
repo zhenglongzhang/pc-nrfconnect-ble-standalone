@@ -319,6 +319,7 @@ export class BeaconConfigDialog extends React.PureComponent {
 
     handleResponse(value) {
         const { pendingCommand, pairWrite, values } = this.state;
+        const { gldVersion } = this.props;
         let response;
         try {
             response = parseIbeaconResponse(value);
@@ -403,6 +404,7 @@ export class BeaconConfigDialog extends React.PureComponent {
                     rssiAt1m: nextValues.rssiAt1m,
                     txPower: nextValues.txPower,
                     broadcastInterval: nextValues.broadcastInterval,
+                    gldVersion,
                 });
                 logger.info(`[iBeacon] parameter log appended path=${csvPath}`);
             } catch (error) {

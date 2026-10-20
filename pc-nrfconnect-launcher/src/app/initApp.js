@@ -44,18 +44,6 @@ const ensureDirExists = async dir => {
     }
 };
 
-const createDailyCsvFile = appDataDir => {
-    const today = new Date();
-    const fileName = `${today.getFullYear()}-${String(
-        today.getMonth() + 1
-    ).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.csv`;
-    const csvPath = path.join(appDataDir, fileName);
-
-    if (!fs.existsSync(csvPath)) {
-        fs.writeFileSync(csvPath, '时间,平均值,最大值,最小值,Mac\n');
-    }
-};
-
 /**
  * Initializes an app.
  *
@@ -79,8 +67,6 @@ export default async appDir => {
     await ensureDirExists(appDataDir);
     await ensureDirExists(appLogDir);
     await ensureDirExists(appCsvsDir);
-
-    createDailyCsvFile(appCsvsDir);
 
     logger.addFileTransport(getAppLogDir());
     return loadApp(appDir);

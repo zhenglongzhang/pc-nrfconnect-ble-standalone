@@ -13,7 +13,7 @@
         "app": "electron .",
         "dev": "nrfconnect-scripts build-watch",
         "webpack": "nrfconnect-scripts build-dev",
-        "build": "nrfconnect-scripts build-prod",
+        "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider nrfconnect-scripts build-prod",
         "lint": "nrfconnect-scripts lint src test-e2e *.js",
         "test": "jest --testResultsProcessor jest-bamboo-formatter src/",
         "test-watch": "jest --watch src/",
