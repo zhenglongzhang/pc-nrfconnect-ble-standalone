@@ -41,6 +41,11 @@ const CODE_COMMAND = Object.keys(COMMAND_CODE).reduce(
 
 export const GLD_MAX_SERIAL_NUMBER = 0x0fffffff;
 
+const BEACON_COMMAND_WRITE_UUID = '6e400002b5a3f393e0a9e50e24dc9999';
+const BEACON_COMMAND_NOTIFY_UUID = '6e400003b5a3f393e0a9e50e24dc9999';
+const CCCD_UUID = '2902';
+const CCCD_STANDARD_UUID = '0000290200001000800000805f9b34fb';
+
 export function decodeGldBroadcastData(major, minor) {
     const batteryLevel = (major >> 12) & 0x0f;
     const serialNumber = ((major & 0x0fff) << 16) | (minor & 0xffff);
@@ -162,21 +167,55 @@ export function createIbeaconCommand(command, value) {
     return [...frame, crc8Maxim(frame)];
 }
 
-export function findIbeaconConfigurationAttributes(characteristics) {
-    const writeCharacteristic = characteristics.find(
-        characteristic =>
-            characteristic.properties &&
-            characteristic.properties.write === true
+function normalizeUuid(uuid) {
+    return String(uuid || '')
+        .replace(/-/g, '')
+        .toLowerCase();
+}
+
+function getCccdDescriptor(characteristic) {
+    if (!Array.isArray(characteristic.descriptors)) {
+        return undefined;
+    }
+
+    return characteristic.descriptors.find(descriptor => {
+        const uuid = normalizeUuid(descriptor.uuid);
+        return uuid === CCCD_UUID || uuid === CCCD_STANDARD_UUID;
+    });
+}
+
+function isWritableWithResponse(characteristic) {
+    return Boolean(
+        characteristic.properties && characteristic.properties.write === true
     );
-    const responseCharacteristic = characteristics.find(
-        characteristic =>
-            characteristic.properties &&
+}
+
+function isNotifiableWithCccd(characteristic) {
+    return Boolean(
+        characteristic.properties &&
             characteristic.properties.notify === true &&
-            Array.isArray(characteristic.descriptors) &&
-            characteristic.descriptors.some(
-                descriptor => descriptor.uuid === '2902'
-            )
+            getCccdDescriptor(characteristic)
     );
+}
+
+export function findIbeaconConfigurationAttributes(characteristics) {
+    // New GLD devices expose other writable attributes before the command UART.
+    // Prefer the same command endpoints selected by znzl_beacn, then fall back
+    // to the original generic selection for older devices.
+    const writeCharacteristic =
+        characteristics.find(
+            characteristic =>
+                normalizeUuid(characteristic.uuid) ===
+                    BEACON_COMMAND_WRITE_UUID &&
+                isWritableWithResponse(characteristic)
+        ) || characteristics.find(isWritableWithResponse);
+    const responseCharacteristic =
+        characteristics.find(
+            characteristic =>
+                normalizeUuid(characteristic.uuid) ===
+                    BEACON_COMMAND_NOTIFY_UUID &&
+                isNotifiableWithCccd(characteristic)
+        ) || characteristics.find(isNotifiableWithCccd);
 
     if (!writeCharacteristic || !responseCharacteristic) {
         throw new Error(
@@ -187,9 +226,7 @@ export function findIbeaconConfigurationAttributes(characteristics) {
     return {
         writeCharacteristic,
         responseCharacteristic,
-        responseCccd: responseCharacteristic.descriptors.find(
-            descriptor => descriptor.uuid === '2902'
-        ),
+        responseCccd: getCccdDescriptor(responseCharacteristic),
     };
 }
 
