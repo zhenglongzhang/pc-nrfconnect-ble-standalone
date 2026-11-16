@@ -661,15 +661,13 @@ export class BeaconConfigDialog extends React.PureComponent {
                             'Password',
                             'password',
                             IBEACON_COMMAND.PASSWORD_CHECK,
-                            false,
-                            'password'
+                            false
                         )}
                     {this.renderField(
                         'New password',
                         'newPassword',
                         IBEACON_COMMAND.PASSWORD_SET,
-                        !verified,
-                        'password'
+                        !verified
                     )}
                     {this.renderField(
                         'UUID',
