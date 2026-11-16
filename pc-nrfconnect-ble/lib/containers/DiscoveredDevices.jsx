@@ -16,6 +16,7 @@ import { bindActionCreators } from 'redux';
 
 import * as AdapterActions from '../actions/adapterActions';
 import * as DiscoveryActions from '../actions/discoveryActions';
+import BeaconPasswordSettings from '../components/BeaconPasswordSettings';
 import DiscoveredDevice from '../components/DiscoveredDevice';
 import DiscoveryButton from '../components/DiscoveryButton';
 import TextInput from '../components/input/TextInput';
@@ -132,6 +133,7 @@ class DiscoveredDevices extends React.PureComponent {
                         label="GLD版本"
                     />
                 </Form.Group>
+                <BeaconPasswordSettings />
                 <TextInput
                     inline
                     title="过滤设备名称或者mac地址"

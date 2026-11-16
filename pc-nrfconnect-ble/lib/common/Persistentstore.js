@@ -6,6 +6,8 @@
 
 import Store from 'electron-store';
 
+import { DEFAULT_IBEACON_PASSWORD } from '../utils/beaconPassword';
+
 export const store = new Store({ name: 'pc-nrfconnect-ble' });
 
 const ADV_KEY = 'Adv';
@@ -16,6 +18,7 @@ const SECURITY_KEY = 'Security';
 const ACTIVE_SCAN = 'ActiveScan';
 const SCAN_TIMEOUT = 'ScanTimeout';
 const GLD_VERSION = 'GldVersion';
+const BEACON_PASSWORD = 'BeaconPassword';
 const ADV_PARAMS = 'AdvParams';
 const CON_PARAMS = 'ConParams';
 
@@ -36,6 +39,7 @@ export const persistentStore = {
     setActiveScan: writeToStore(ACTIVE_SCAN),
     setScanTimeout: writeToStore(SCAN_TIMEOUT),
     setGldVersion: writeToStore(GLD_VERSION),
+    setBeaconPassword: writeToStore(BEACON_PASSWORD),
     setAdvParams: writeToStore(ADV_PARAMS),
     setConnectionParams: writeToStore(CON_PARAMS),
     secParams: defaultParams => ({
@@ -49,6 +53,7 @@ export const persistentStore = {
     activeScan: () => store.get(ACTIVE_SCAN, true),
     scanTimeout: () => store.get(SCAN_TIMEOUT, 60),
     gldVersion: () => store.get(GLD_VERSION, false),
+    beaconPassword: () => store.get(BEACON_PASSWORD, DEFAULT_IBEACON_PASSWORD),
     advParams: () => store.get(ADV_PARAMS, { interval: 100, timeout: 0 }),
     connectionParams: defaultParams => ({
         ...defaultParams,

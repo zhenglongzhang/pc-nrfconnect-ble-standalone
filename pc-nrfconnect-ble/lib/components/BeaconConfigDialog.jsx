@@ -19,8 +19,10 @@ import Modal from 'react-bootstrap/Modal';
 import { logger } from 'pc-nrfconnect-shared';
 import PropTypes from 'prop-types';
 
+import { persistentStore } from '../common/Persistentstore';
 import { getInstanceIds } from '../utils/api';
 import { appendDeviceParametersToCsv } from '../utils/appendToCsv';
+import { isValidBeaconPassword } from '../utils/beaconPassword';
 import {
     createIbeaconCommand,
     decodeGldBroadcastData,
@@ -36,7 +38,7 @@ const INTERVAL_OPTIONS = [
     100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1500, 2000, 2500, 3000,
     5000, 10000,
 ];
-export const DEFAULT_IBEACON_PASSWORD = '123456';
+export { DEFAULT_IBEACON_PASSWORD } from '../utils/beaconPassword';
 
 export function getCharacteristicValue(deviceDetails, instanceId) {
     if (!deviceDetails || !instanceId) {
@@ -63,11 +65,18 @@ export class BeaconConfigDialog extends React.PureComponent {
         super(props);
         this.state = this.initialState();
         this.timeout = null;
+        this.passwordTimeout = null;
+        this.closed = false;
+        this.prepareRequest = 0;
+        this.passwordInput = React.createRef();
+        this.scannerInput = React.createRef();
         this.prepare = this.prepare.bind(this);
         this.send = this.send.bind(this);
         this.submitGldSerialNumber = this.submitGldSerialNumber.bind(this);
         this.submitScannerInput = this.submitScannerInput.bind(this);
         this.handleResponse = this.handleResponse.bind(this);
+        this.handleClose = this.handleClose.bind(this);
+        this.focusInput = this.focusInput.bind(this);
     }
 
     componentDidMount() {
@@ -77,6 +86,8 @@ export class BeaconConfigDialog extends React.PureComponent {
     componentDidUpdate(prevProps) {
         if (prevProps.device.instanceId !== this.props.device.instanceId) {
             this.clearTimeout();
+            this.clearPasswordTimeout();
+            this.prepareRequest += 1;
             this.setState(this.initialState(), this.prepare);
             return;
         }
@@ -99,7 +110,10 @@ export class BeaconConfigDialog extends React.PureComponent {
     }
 
     componentWillUnmount() {
+        this.closed = true;
+        this.prepareRequest += 1;
         this.clearTimeout();
+        this.clearPasswordTimeout();
     }
 
     initialState() {
@@ -135,10 +149,42 @@ export class BeaconConfigDialog extends React.PureComponent {
         }
     }
 
+    clearPasswordTimeout() {
+        clearTimeout(this.passwordTimeout);
+        this.passwordTimeout = null;
+    }
+
+    focusInput() {
+        if (this.closed || this.state.pendingCommand) return;
+        const input = this.state.verified
+            ? this.scannerInput.current
+            : this.passwordInput.current;
+        if (input) input.focus();
+    }
+
+    handleClose() {
+        if (this.closed) return;
+        this.closed = true;
+        this.prepareRequest += 1;
+        this.clearTimeout();
+        this.clearPasswordTimeout();
+        const { device, onDisconnect, onHide } = this.props;
+        try {
+            onDisconnect(device);
+        } finally {
+            onHide();
+        }
+    }
+
     async prepare() {
+        if (this.closed) return;
+        this.prepareRequest += 1;
+        const request = this.prepareRequest;
         const { device, onPrepare, scannedDevice } = this.props;
         try {
             const configuration = await onPrepare(device);
+            if (this.closed || request !== this.prepareRequest) return;
+            const password = persistentStore.beaconPassword();
             const prefillSource = scannedDevice || device;
             const scannedValues = getIbeaconValuesFromDevice(prefillSource);
             const gldData = decodeGldBroadcastData(
@@ -169,25 +215,34 @@ export class BeaconConfigDialog extends React.PureComponent {
                                   batteryLevel: String(gldData.batteryLevel),
                               }
                             : {}),
-                        password: DEFAULT_IBEACON_PASSWORD,
+                        password,
                     },
                     status: 'Notifications enabled. Verifying the default password…',
                     statusType: 'info',
                 },
-                () =>
-                    this.send(
-                        IBEACON_COMMAND.PASSWORD_CHECK,
-                        DEFAULT_IBEACON_PASSWORD
-                    )
+                () => this.send(IBEACON_COMMAND.PASSWORD_CHECK, password)
             );
         } catch (error) {
+            if (this.closed || request !== this.prepareRequest) return;
             this.setState({ status: error.message, statusType: 'danger' });
         }
     }
 
     updateValue(name, event) {
         const { values } = this.state;
-        this.setState({ values: { ...values, [name]: event.target.value } });
+        const { value } = event.target;
+        this.setState({ values: { ...values, [name]: value } });
+        if (name === 'password') {
+            this.clearPasswordTimeout();
+            if (this.state.passwordRequired && isValidBeaconPassword(value)) {
+                this.passwordTimeout = setTimeout(() => {
+                    this.passwordTimeout = null;
+                    if (!this.state.verified) {
+                        this.send(IBEACON_COMMAND.PASSWORD_CHECK, value);
+                    }
+                }, 2000);
+            }
+        }
     }
 
     startPairWrite(major, minor, values) {
@@ -276,8 +331,12 @@ export class BeaconConfigDialog extends React.PureComponent {
     send(command, value) {
         const { onWriteCharacteristic } = this.props;
         const { configuration, pendingCommand } = this.state;
-        if (!configuration || pendingCommand) {
+        if (this.closed || !configuration || pendingCommand) {
             return;
+        }
+
+        if (command === IBEACON_COMMAND.PASSWORD_CHECK) {
+            this.clearPasswordTimeout();
         }
 
         let frame;
@@ -297,16 +356,20 @@ export class BeaconConfigDialog extends React.PureComponent {
             logger.warn(
                 `[iBeacon] response timeout command=${command} notify=${configuration.responseCharacteristic.instanceId}`
             );
-            this.setState({
-                pendingCommand: null,
-                pairWrite: null,
-                passwordRequired: command === IBEACON_COMMAND.PASSWORD_CHECK,
-                status:
-                    command === IBEACON_COMMAND.PASSWORD_CHECK
-                        ? 'Default password verification timed out. Enter the device password and try again.'
-                        : 'The device did not respond within 5 seconds.',
-                statusType: 'danger',
-            });
+            this.setState(
+                {
+                    pendingCommand: null,
+                    pairWrite: null,
+                    passwordRequired:
+                        command === IBEACON_COMMAND.PASSWORD_CHECK,
+                    status:
+                        command === IBEACON_COMMAND.PASSWORD_CHECK
+                            ? 'Default password verification timed out. Enter the device password and try again.'
+                            : 'The device did not respond within 5 seconds.',
+                    statusType: 'danger',
+                },
+                this.focusInput
+            );
         }, 5000);
 
         logger.debug(
@@ -318,6 +381,7 @@ export class BeaconConfigDialog extends React.PureComponent {
     }
 
     handleResponse(value) {
+        if (this.closed) return;
         const { pendingCommand, pairWrite, values } = this.state;
         const { gldVersion } = this.props;
         let response;
@@ -347,21 +411,24 @@ export class BeaconConfigDialog extends React.PureComponent {
         );
         this.clearTimeout();
         if (!response.success) {
-            this.setState({
-                pendingCommand: null,
-                pairWrite: null,
-                passwordRequired:
-                    response.command === IBEACON_COMMAND.PASSWORD_CHECK,
-                values:
-                    response.command === IBEACON_COMMAND.PASSWORD_CHECK
-                        ? { ...values, password: '' }
-                        : values,
-                status:
-                    response.command === IBEACON_COMMAND.PASSWORD_CHECK
-                        ? 'Default password was rejected. Enter the device password and try again.'
-                        : 'The device rejected the command.',
-                statusType: 'danger',
-            });
+            this.setState(
+                {
+                    pendingCommand: null,
+                    pairWrite: null,
+                    passwordRequired:
+                        response.command === IBEACON_COMMAND.PASSWORD_CHECK,
+                    values:
+                        response.command === IBEACON_COMMAND.PASSWORD_CHECK
+                            ? { ...values, password: '' }
+                            : values,
+                    status:
+                        response.command === IBEACON_COMMAND.PASSWORD_CHECK
+                            ? 'Default password was rejected. Enter the device password and try again.'
+                            : 'The device rejected the command.',
+                    statusType: 'danger',
+                },
+                this.focusInput
+            );
             return;
         }
 
@@ -414,20 +481,25 @@ export class BeaconConfigDialog extends React.PureComponent {
             }
         }
 
-        this.setState({
-            pendingCommand: null,
-            pairWrite:
-                response.command === IBEACON_COMMAND.MINOR_SET && pairWrite
-                    ? null
-                    : pairWrite,
-            verified:
-                this.state.verified ||
-                response.command === IBEACON_COMMAND.PASSWORD_CHECK,
-            passwordRequired: false,
-            values: nextValues,
-            status: 'Configuration updated successfully.',
-            statusType: 'success',
-        });
+        this.setState(
+            {
+                pendingCommand: null,
+                pairWrite:
+                    response.command === IBEACON_COMMAND.MINOR_SET && pairWrite
+                        ? null
+                        : pairWrite,
+                verified:
+                    this.state.verified ||
+                    response.command === IBEACON_COMMAND.PASSWORD_CHECK,
+                passwordRequired: false,
+                values: nextValues,
+                status: 'Configuration updated successfully.',
+                statusType: 'success',
+            },
+            response.command === IBEACON_COMMAND.PASSWORD_CHECK
+                ? this.focusInput
+                : undefined
+        );
     }
 
     renderField(label, name, command, disabled, type = 'text') {
@@ -437,6 +509,10 @@ export class BeaconConfigDialog extends React.PureComponent {
                 <Form.Label>{label}</Form.Label>
                 <div className="d-flex">
                     <Form.Control
+                        ref={
+                            name === 'password' ? this.passwordInput : undefined
+                        }
+                        aria-label={label}
                         type={type}
                         value={values[name]}
                         disabled={disabled || !!pendingCommand}
@@ -450,6 +526,11 @@ export class BeaconConfigDialog extends React.PureComponent {
                         Set
                     </Button>
                 </div>
+                {name === 'password' && (
+                    <Form.Text>
+                        输入至少 6 位数字后，停止输入 2 秒自动验证。
+                    </Form.Text>
+                )}
             </Form.Group>
         );
     }
@@ -520,15 +601,27 @@ export class BeaconConfigDialog extends React.PureComponent {
     }
 
     render() {
-        const { device, gldVersion, onHide } = this.props;
+        const { device, gldVersion } = this.props;
         const { pendingCommand, scannerInput, status, statusType, verified } =
             this.state;
         return (
-            <Modal show onHide={onHide} size="lg">
-                <Modal.Header closeButton>
+            <Modal
+                show
+                onHide={this.handleClose}
+                onEntered={this.focusInput}
+                size="lg"
+            >
+                <Modal.Header>
                     <Modal.Title>
                         Beacon configuration — {device.address}
                     </Modal.Title>
+                    <Button
+                        className="ml-3"
+                        variant="secondary"
+                        onClick={this.handleClose}
+                    >
+                        Close
+                    </Button>
                 </Modal.Header>
                 <Modal.Body>
                     <div className={`alert alert-${statusType}`} role="alert">
@@ -538,6 +631,8 @@ export class BeaconConfigDialog extends React.PureComponent {
                         <Form.Label>扫码下发</Form.Label>
                         <div className="d-flex">
                             <Form.Control
+                                ref={this.scannerInput}
+                                aria-label="扫码下发"
                                 value={scannerInput}
                                 disabled={!verified || !!pendingCommand}
                                 onChange={event =>
@@ -628,7 +723,7 @@ export class BeaconConfigDialog extends React.PureComponent {
                     {pendingCommand && <div>Waiting for {pendingCommand}…</div>}
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={onHide}>
+                    <Button variant="secondary" onClick={this.handleClose}>
                         Close
                     </Button>
                 </Modal.Footer>
@@ -641,6 +736,7 @@ BeaconConfigDialog.propTypes = {
     device: PropTypes.object.isRequired,
     deviceDetails: PropTypes.object,
     onHide: PropTypes.func.isRequired,
+    onDisconnect: PropTypes.func.isRequired,
     onPrepare: PropTypes.func.isRequired,
     onWriteCharacteristic: PropTypes.func.isRequired,
     scannedDevice: PropTypes.object,

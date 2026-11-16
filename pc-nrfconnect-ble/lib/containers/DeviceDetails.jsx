@@ -262,6 +262,7 @@ class DeviceDetailsContainer extends React.PureComponent {
                         }
                         deviceDetails={deviceDetails}
                         onHide={this.hideBeaconConfig}
+                        onDisconnect={disconnectFromDevice}
                         onPrepare={prepareIbeaconConfiguration}
                         onWriteCharacteristic={writeCharacteristic}
                         gldVersion={gldVersion}
